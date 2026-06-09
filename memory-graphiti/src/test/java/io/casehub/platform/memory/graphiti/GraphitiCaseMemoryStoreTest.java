@@ -430,19 +430,17 @@ class GraphitiCaseMemoryStoreTest {
     // ── eraseById ─────────────────────────────────────────────────────────────
 
     @Test
-    void eraseById_deletes_episode() {
-        final String episodeId = "ep-uuid-123";
-        wireMock.stubFor(delete(urlEqualTo("/episode/" + episodeId))
-            .willReturn(aResponse().withStatus(200)
-                .withHeader("Content-Type", "application/json")
-                .withBody("{\"success\":true,\"message\":\"deleted\"}")));
-
-        assertDoesNotThrow(() -> store.eraseById(episodeId, TENANT));
-        wireMock.verify(deleteRequestedFor(urlEqualTo("/episode/" + episodeId)));
+    void eraseById_throws_MemoryCapabilityException_no_http_call() {
+        // Graphiti DELETE /episode/{uuid} only removes the EpisodicNode; derived entity/
+        // relationship facts persist. ERASE_BY_ID cannot guarantee GDPR Art.17 completeness.
+        final var ex = assertThrows(MemoryCapabilityException.class,
+            () -> store.eraseById("ep-uuid-123", TENANT));
+        assertEquals(MemoryCapability.ERASE_BY_ID, ex.required());
+        wireMock.verify(0, deleteRequestedFor(anyUrl()));
     }
 
     @Test
-    void eraseById_tenant_mismatch_throws_before_http() {
+    void eraseById_tenant_mismatch_throws_SecurityException_before_capability_check() {
         assertThrows(SecurityException.class, () ->
             store.eraseById("any-id", "wrong-tenant"));
         wireMock.verify(0, deleteRequestedFor(anyUrl()));
@@ -473,11 +471,13 @@ class GraphitiCaseMemoryStoreTest {
         assertTrue(caps.contains(MemoryCapability.SEMANTIC_SEARCH));
         assertTrue(caps.contains(MemoryCapability.TEMPORAL_GRAPH));
         assertTrue(caps.contains(MemoryCapability.FACT_SEARCH));
-        assertTrue(caps.contains(MemoryCapability.ERASE_BY_ID));
         assertTrue(caps.contains(MemoryCapability.ERASE_ENTITY));
         assertFalse(caps.contains(MemoryCapability.DOMAIN_SCOPED));
         assertFalse(caps.contains(MemoryCapability.CASE_SCOPED));
         assertFalse(caps.contains(MemoryCapability.ERASE_DOMAIN_CASE));
         assertFalse(caps.contains(MemoryCapability.ENTITY_TYPE_FILTER));
+        // ERASE_BY_ID removed: DELETE /episode/{uuid} leaves derived entity/relationship
+        // facts intact — incomplete erasure cannot satisfy GDPR Art.17 (see platform#74)
+        assertFalse(caps.contains(MemoryCapability.ERASE_BY_ID));
     }
 }

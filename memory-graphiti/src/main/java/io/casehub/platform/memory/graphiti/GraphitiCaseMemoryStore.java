@@ -30,6 +30,12 @@ public class GraphitiCaseMemoryStore implements GraphCaseMemoryStore {
 
     @Override
     public Set<MemoryCapability> capabilities() {
+        // TEMPORAL_GRAPH: server POST /search does not accept valid_at as a request param;
+        // temporal filtering is applied client-side using validAt/invalidAt fields returned
+        // per fact. Functional but not server-side prefiltered.
+        // ERASE_BY_ID absent: DELETE /episode/{uuid} only removes the EpisodicNode;
+        // LLM-extracted EntityNode/EntityEdge records persist. GDPR Art.17 completeness
+        // cannot be guaranteed — see platform#74 and getzep/graphiti upstream.
         return Set.of(
             MemoryCapability.CHRONOLOGICAL_ORDER,
             MemoryCapability.SINCE_FILTER,
@@ -37,7 +43,6 @@ public class GraphitiCaseMemoryStore implements GraphCaseMemoryStore {
             MemoryCapability.SEMANTIC_SEARCH,
             MemoryCapability.TEMPORAL_GRAPH,
             MemoryCapability.FACT_SEARCH,
-            MemoryCapability.ERASE_BY_ID,
             MemoryCapability.ERASE_ENTITY
         );
     }
@@ -232,15 +237,19 @@ public class GraphitiCaseMemoryStore implements GraphCaseMemoryStore {
         }
     }
 
-    @Timed(value = "casehub.memory.graphiti", histogram = true, extraTags = {"operation", "eraseById"})
+    /**
+     * Not supported — Graphiti's DELETE /episode/{uuid} removes the source EpisodicNode only;
+     * LLM-extracted EntityNode and EntityEdge records derived from that episode persist in the
+     * graph. GDPR Art.17 complete erasure cannot be guaranteed. Use {@link #eraseEntity} for
+     * full removal of all data for an entityId.
+     *
+     * @throws MemoryCapabilityException always — re-declare ERASE_BY_ID in capabilities() once
+     *     cascade support is available upstream (getzep/graphiti, platform#74)
+     */
     @Override
     public void eraseById(final String memoryId, final String tenantId) {
         MemoryPermissions.assertTenant(tenantId, principal);
-        try {
-            client.deleteEpisode(memoryId);
-        } catch (final WebApplicationException e) {
-            throw GraphitiStoreException.from(e);
-        }
+        requireCapability(MemoryCapability.ERASE_BY_ID);
     }
 
     // ── mapping helpers ───────────────────────────────────────────────────────
