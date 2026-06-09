@@ -122,7 +122,7 @@ public class SqliteMemoryStore implements CaseMemoryStore {
     @Override
     public List<String> storeAll(List<MemoryInput> inputs) {
         if (inputs.isEmpty()) return List.of();
-        MemoryPermissions.assertTenant(inputs.get(0).tenantId(), principal);
+        inputs.forEach(i -> MemoryPermissions.assertTenant(i.tenantId(), principal));
         String sql = "INSERT INTO memory_entry (memory_id, tenant_id, entity_id, domain, case_id, text, attributes, created_at) VALUES (?,?,?,?,?,?,?,?)";
         List<String> ids = new ArrayList<>(inputs.size());
         try (Connection conn = dataSource.getConnection()) {
