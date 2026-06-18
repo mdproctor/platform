@@ -32,6 +32,11 @@
         <module>agent-claude-langchain4j</module>
         <module>acl-inmem</module>
         <module>acl-jpa</module>
+        <module>streams-kafka</module>
+        <module>streams-amqp</module>
+        <module>streams-webhook</module>
+        <module>streams-poll</module>
+        <module>streams-camel</module>
     </modules>
 
     <properties>
@@ -59,6 +64,21 @@
                 <version>${quarkus.platform.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.cloudevents</groupId>
+                <artifactId>cloudevents-api</artifactId>
+                <version>4.0.1</version>
+            </dependency>
+            <dependency>
+                <groupId>io.cloudevents</groupId>
+                <artifactId>cloudevents-core</artifactId>
+                <version>4.0.1</version>
+            </dependency>
+            <dependency>
+                <groupId>io.cloudevents</groupId>
+                <artifactId>cloudevents-json-jackson</artifactId>
+                <version>4.0.1</version>
             </dependency>
             <dependency>
                 <groupId>org.xerial</groupId>
