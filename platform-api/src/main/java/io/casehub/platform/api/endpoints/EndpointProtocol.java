@@ -26,6 +26,13 @@ public enum EndpointProtocol {
     KAFKA,
 
     /**
+     * AMQP message broker transport. Use {@link EndpointPropertyKeys#TOPIC} for queue or
+     * topic name. {@link EndpointPropertyKeys#URL} does not apply — broker connection
+     * is Quarkus-managed via standard config (e.g. {@code amqp-host}, {@code amqp-port}).
+     */
+    AMQP,
+
+    /**
      * Model Context Protocol — LLM tool invocation protocol.
      * Use {@link EndpointPropertyKeys#URL} for the MCP server base URL.
      */

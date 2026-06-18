@@ -24,6 +24,13 @@ import java.util.Optional;
  * <p>The SPI enforces no write authorization — callers are accountable for ensuring
  * {@link EndpointDescriptor#tenancyId()} matches their authority. The initial population
  * model ({@code @Startup @PostConstruct}) operates with implicit system authority.
+ *
+ * <h2>EndpointRegistered CDI event</h2>
+ * <p>Non-no-op implementations have a required obligation to fire
+ * {@link EndpointRegistered} via {@code Event<EndpointRegistered>.fireAsync()} after
+ * every successful {@link #register(EndpointDescriptor)} call. The no-op
+ * {@code @DefaultBean} implementation must NOT fire the event — it stores nothing,
+ * and firing would trigger stream route creation for phantom endpoints.
  */
 public interface EndpointRegistry {
 

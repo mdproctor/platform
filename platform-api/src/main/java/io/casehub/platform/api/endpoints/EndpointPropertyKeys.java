@@ -29,19 +29,39 @@ public final class EndpointPropertyKeys {
      *       expression, not necessarily an HTTP URL)</li>
      *   <li>{@link EndpointProtocol#QHORUS} — Qhorus REST base URL</li>
      * </ul>
+     *
+     * <p>KAFKA and AMQP are excluded — broker connection for both is Quarkus-managed
+     * via standard config (e.g. {@code kafka.bootstrap.servers},
+     * {@code amqp-host}/{@code amqp-port}).
      */
     public static final String URL = "url";
 
     /**
-     * The Kafka topic name.
+     * The Kafka topic or AMQP queue/topic name.
      *
-     * <p>Applies to: {@link EndpointProtocol#KAFKA} only.
+     * <p>Applies to: {@link EndpointProtocol#KAFKA} and {@link EndpointProtocol#AMQP}.
      *
      * <p>A producer registering {@link EndpointCapability#SEND} and a consumer registering
      * {@link EndpointCapability#RECEIVE} for the same logical endpoint must use this key
      * to interoperate — both read the topic name from the same property key.
      */
     public static final String TOPIC = "topic";
+
+    /**
+     * Logical CloudEvent {@code type} for a stream source — reverse-DNS, e.g.
+     * {@code io.casehub.iot.temperature}. Stream modules that build CloudEvents from
+     * raw payloads read this from {@link EndpointDescriptor#properties()} to set the
+     * CloudEvent {@code type} field.
+     *
+     * <p>Applies to: {@link EndpointProtocol#KAFKA}, {@link EndpointProtocol#AMQP},
+     * {@link EndpointProtocol#HTTP} ({@code streams-poll} only),
+     * {@link EndpointProtocol#CAMEL}.
+     *
+     * <p><b>Not used by {@code streams-webhook}.</b> Webhook requests are already
+     * structured CloudEvents; their {@code type} field is preserved from the incoming
+     * event and not overridden by the descriptor.
+     */
+    public static final String STREAM_EVENT_TYPE = "stream-event-type";
 
     private EndpointPropertyKeys() {}
 }
