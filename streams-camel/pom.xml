@@ -11,5 +11,81 @@
     </parent>
 
     <artifactId>casehub-platform-streams-camel</artifactId>
-    <name>casehub-platform-streams-camel</name>
+    <packaging>jar</packaging>
+    <name>CaseHub Platform Streams — Camel</name>
+    <description>Dynamic Camel route builder for runtime-registered CAMEL endpoints.
+        Observes EndpointRegistered for CAMEL protocol; discovers pre-startup endpoints at StartupEvent.
+        P0 constraint: changing a Camel endpoint URI requires restart (old route is not stopped).
+        CAMEL and KAFKA are mutually exclusive for the same Kafka topic.
+        Consumer application must add Camel component deps (e.g. camel-quarkus-kafka).
+        No quarkus:build goal — library module.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.casehub</groupId>
+            <artifactId>casehub-platform-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.camel.quarkus</groupId>
+            <artifactId>camel-quarkus-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.casehub</groupId>
+            <artifactId>casehub-platform</artifactId>
+            <version>${project.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.camel.quarkus</groupId>
+            <artifactId>camel-quarkus-mock</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.casehub</groupId>
+            <artifactId>casehub-platform-endpoints-memory</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-maven-plugin</artifactId>
+                <version>${quarkus.platform.version}</version>
+                <extensions>true</extensions>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate-code</goal>
+                            <goal>generate-code-tests</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.smallrye</groupId>
+                <artifactId>jandex-maven-plugin</artifactId>
+                <version>${jandex-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>make-index</id>
+                        <goals><goal>jandex</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>
