@@ -18,6 +18,7 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import org.apache.kafka.common.header.Header;
 import org.eclipse.microprofile.config.ConfigProvider;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.eclipse.microprofile.reactive.messaging.Message;
 import org.jboss.logging.Logger;
@@ -54,6 +55,9 @@ public class KafkaStreamProcessor {
     private static final String CHANNEL_NAME = "casehub-kafka-stream";
     private static final String UNREGISTERED_TYPE = "io.casehub.platform.streams.kafka.unregistered";
 
+    @ConfigProperty(name = "casehub.streams.kafka.channel", defaultValue = "casehub-kafka-stream")
+    String channelName;
+
     @Inject
     EndpointRegistry endpointRegistry;
 
@@ -65,14 +69,14 @@ public class KafkaStreamProcessor {
 
     void onStartup(@Observes StartupEvent ev) {
         String topicConfig = ConfigProvider.getConfig()
-            .getOptionalValue("mp.messaging.incoming." + CHANNEL_NAME + ".topic", String.class)
+            .getOptionalValue("mp.messaging.incoming." + channelName + ".topic", String.class)
             .or(() -> ConfigProvider.getConfig()
-                .getOptionalValue("mp.messaging.incoming." + CHANNEL_NAME + ".topics", String.class))
+                .getOptionalValue("mp.messaging.incoming." + channelName + ".topics", String.class))
             .orElse("");
 
         if (topicConfig.isBlank()) {
             LOG.warnf("No topic configured for channel '%s' — no KAFKA streams will be processed",
-                CHANNEL_NAME);
+                channelName);
             return;
         }
 

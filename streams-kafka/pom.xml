@@ -18,7 +18,9 @@
         raw byte[], and fires Event&lt;CloudEvent&gt;.fireAsync(). Does NOT observe
         EndpointRegistered — KAFKA descriptors must be registered before startup via
         endpoints-config YAML. For runtime-dynamic topics use streams-camel.
-        No quarkus:build goal — library module.</description>
+        CAMEL and KAFKA are mutually exclusive for the same Kafka topic — running both
+        from the same consumer group causes silent message loss (Kafka partition-splits
+        between groups). No quarkus:build goal — library module.</description>
 
     <dependencies>
         <dependency>

@@ -43,6 +43,14 @@ import java.util.Set;
  *
  * <p>{@code @Startup} forces eager {@code @PostConstruct} so the EventFormat is resolved and
  * the physical receiver is registered before the first HTTP request arrives.
+ *
+ * <p><b>P0 URL path note:</b> {@code PLATFORM_TENANT_ID = "platform"} (the literal
+ * string, not a UUID). For standard single-tenant deployments where desiredstate
+ * registers endpoints under {@code DEFAULT_TENANT_ID} (a UUID), the webhook URL
+ * includes that UUID as the {@code {tenancyId}} segment
+ * (e.g. {@code .../webhook/278776f9-.../my-stream}). For platform-global descriptors,
+ * the URL includes the string {@code platform}. Per-tenant webhook routing with cleaner
+ * URLs is P1+.
  */
 @Startup
 @ApplicationScoped
