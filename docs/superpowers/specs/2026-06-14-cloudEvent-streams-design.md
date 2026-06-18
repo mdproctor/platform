@@ -360,13 +360,28 @@ void poll() {
 }
 ```
 
-**`pollAndFire(descriptor)` implementation note:** `java.net.http.HttpClient.send()` throws `IOException` only for connection-level failures (DNS resolution, connection timeout, TCP errors, interrupted threads). A 4xx or 5xx HTTP response is a successful send — the method returns `HttpResponse<byte[]>` with `response.statusCode()` set to the error code; no exception is thrown. Without an explicit status code check, the error response body bytes would silently be treated as CloudEvent `data` and fired to observers. `pollAndFire()` must check the status code explicitly:
+**`pollAndFire(descriptor)` implementation note:** `java.net.http.HttpClient.send()` is declared `throws IOException, InterruptedException` (JDK source confirmed). Two distinct failure modes:
+
+1. **Connection-level failures** (`IOException` from `send()` directly): DNS, TCP, timeout.
+2. **HTTP error responses** (4xx/5xx): `send()` succeeds and returns `HttpResponse<byte[]>` with `response.statusCode()` set to the error code — no exception is thrown. Without explicit status code checking, the error body bytes would silently be treated as CloudEvent `data` and fired to observers.
+3. **Thread interruption** (`InterruptedException` from `send()`): requires special handling to preserve the Quarkus scheduler's shutdown protocol.
+
+The `pollAndFire()` lambda body in `poll()` calls `Consumer<T>.accept()`, which does not declare checked exceptions — `throws InterruptedException` on `pollAndFire()` won't compile. `InterruptedException` must be caught inside `pollAndFire()`, the thread re-interrupted (to preserve the interrupt signal for the scheduler), and re-thrown as `IOException`:
 
 ```java
+// Class field — connection pool reused across poll intervals; per-call creation discards pool
+private final HttpClient httpClient = HttpClient.newHttpClient();
+
 void pollAndFire(EndpointDescriptor descriptor) throws IOException {
     String url = descriptor.properties().get(EndpointPropertyKeys.URL);
     HttpRequest request = HttpRequest.newBuilder().GET().uri(URI.create(url)).build();
-    HttpResponse<byte[]> response = httpClient.send(request, BodyHandlers.ofByteArray());
+    HttpResponse<byte[]> response;
+    try {
+        response = httpClient.send(request, BodyHandlers.ofByteArray());
+    } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();                         // preserve interrupt flag
+        throw new IOException("Poll interrupted for " + url, e);  // propagates to poll loop
+    }
     if (response.statusCode() < 200 || response.statusCode() >= 300) {
         throw new IOException("Poll returned HTTP " + response.statusCode() + " for " + url);
     }
@@ -379,7 +394,7 @@ void pollAndFire(EndpointDescriptor descriptor) throws IOException {
 }
 ```
 
-The `IOException` from a non-2xx status is then caught by the per-endpoint `try/catch` in the poll loop, logged at WARN, and iteration continues to the next endpoint.
+All three failure paths — connection `IOException`, interrupt re-thrown as `IOException`, non-2xx `IOException` — are caught by the per-endpoint `try/catch` in `poll()`, logged at WARN, and iteration continues.
 
 **Tenancy scope for discovery:** `DEFAULT_TENANT_ID` is correct — `matchesTenancy` returns descriptors under `DEFAULT_TENANT_ID` (desiredstate-registered endpoints) and `PLATFORM_TENANT_ID` (platform-global endpoints). `EndpointQuery` requires non-null `tenancyId`: `Objects.requireNonNull(tenancyId)` confirmed in source. Multi-tenant poll scheduling (discovering per-tenant `HTTP + QUERY` endpoints independently) is P1+.
 
@@ -525,10 +540,11 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 - [ ] All five stream processor beans are `@ApplicationScoped`; `streams-webhook` additionally requires `@Startup` (forces eager `@PostConstruct`; other four modules use `@Observes StartupEvent` which achieves the same eager initialization automatically)
 - [ ] `streams-kafka` does NOT observe `EndpointRegistered` — documented in Javadoc and pom `<description>`
 - [ ] `streams-amqp` does NOT observe `EndpointRegistered` — documented in Javadoc and pom `<description>` (same static-channel constraint as `streams-kafka`)
-- [ ] `streams-poll` dependencies: `quarkus-scheduler` only (no additional HTTP dep — uses `java.net.http.HttpClient` from Java 21 stdlib; `quarkus-rest-client-jackson` not used)
-- [ ] `streams-poll` uses `java.net.http.HttpClient.newHttpClient().send(request, BodyHandlers.ofByteArray())` for synchronous blocking GET (appropriate for `@Scheduled` context)
-- [ ] `streams-poll` `pollAndFire()` explicitly checks `response.statusCode()` and throws `IOException` on non-2xx — `HttpClient.send()` does NOT throw for 4xx/5xx (those are successful sends returning `HttpResponse` with error status code); without this check the error body bytes would silently become CloudEvent data
-- [ ] `streams-poll` per-endpoint `try/catch` catches both connection `IOException` and the explicit non-2xx `IOException`, logs at WARN with URL, continues to next endpoint
+- [ ] `streams-poll` dependencies: `quarkus-scheduler` only (no additional HTTP dep — uses `java.net.http.HttpClient` from Java 21 stdlib)
+- [ ] `streams-poll` declares `private final HttpClient httpClient = HttpClient.newHttpClient()` as a class field (not per-call — per-call discards connection pool on every GET)
+- [ ] `streams-poll` `pollAndFire()` wraps `httpClient.send()` in a `try/catch (InterruptedException e)` that calls `Thread.currentThread().interrupt()` then rethrows as `IOException` — `HttpClient.send()` is declared `throws IOException, InterruptedException` (JDK confirmed); `Consumer.accept()` does not declare checked exceptions so `InterruptedException` cannot propagate; re-interrupting preserves the Quarkus scheduler shutdown protocol
+- [ ] `streams-poll` `pollAndFire()` explicitly checks `response.statusCode()` and throws `IOException` on non-2xx — `HttpClient.send()` does NOT throw for 4xx/5xx; without this check the error body bytes would silently become CloudEvent data
+- [ ] `streams-poll` per-endpoint `try/catch (Exception e)` catches all three failure paths (connection `IOException`, interrupt re-thrown as `IOException`, non-2xx `IOException`), logs at WARN with URL, continues to next endpoint
 - [ ] `streams-camel` uses "discover at startup + idempotent post-startup handler" design (no buffering, no synchronized block)
 - [ ] `streams-camel` `addRoute()` wraps `CamelContext.addRoutes()` in `try/catch(Exception e)` and rethrows as `RuntimeException`; in `onStartup` this aborts startup and skips remaining descriptors in the forEach (fail-fast; bad URI prevents startup); in `onEndpointRegistered` it propagates through CDI async executor to the `fireAsync().whenComplete` WARN logger
 - [ ] `streams-camel` URI-change P0 constraint documented in Javadoc and pom `<description>`
