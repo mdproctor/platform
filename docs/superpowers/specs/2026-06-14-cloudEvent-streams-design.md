@@ -138,7 +138,7 @@ public void register(EndpointDescriptor endpoint) {
 
 **`InMemoryEndpointRegistryTest`** (existing, plain JUnit5): All 14 tests use `new InMemoryEndpointRegistry()`. The null guard in `register()` means these tests pass unchanged — no event is fired in the no-CDI context, which is correct.
 
-**`InMemoryEndpointRegistryEventTest`** (new, `@QuarkusTest`): Verifies that `EndpointRegistered` fires on each `register()` call. Per GE-20260513-b15933, `@ObservesAsync` is silently not delivered in `@QuarkusTest`. Use an `@ApplicationScoped` capture bean with a `CountDownLatch` whose `capture(EndpointRegistered e)` method is called directly by the test (not observed asynchronously). Both test classes must be named explicitly in the acceptance criteria.
+**`InMemoryEndpointRegistryEventTest`** (new, `@QuarkusTest`): Verifies that `register()` completes without exception when `Event<EndpointRegistered>` is CDI-injected (the null guard passes, `fireAsync()` is invoked without NPE). It does **NOT** verify CDI async delivery — `@ObservesAsync` is silently not delivered in `@QuarkusTest` (GE-20260513-b15933), so observer invocation is untestable at this level. CDI async delivery is accepted as verified framework behavior; what the test validates is that the CDI wiring is correct and the event bus is called. Both test classes named explicitly in the acceptance criteria.
 
 ---
 
@@ -201,7 +201,9 @@ All stream modules produce `CloudEvent` with:
 
 **P0 single-channel constraint:** One `@Incoming("casehub-kafka-stream")` channel per deployment (channel name configurable via `casehub.streams.kafka.channel`, default `casehub-kafka-stream`). Multiple Kafka topics can feed the same channel via `mp.messaging.incoming.casehub-kafka-stream.topics=topic1,topic2` (SmallRye multi-topic). For multiple independently-configured channels, deploy `streams-camel`.
 
-**Channel→EndpointDescriptor correlation** at `@Observes StartupEvent`: reads `mp.messaging.incoming.${casehub.streams.kafka.channel}.topic` (or `.topics`) via MicroProfile Config, then calls `EndpointRegistry.discover(new EndpointQuery(TenancyConstants.DEFAULT_TENANT_ID, null, KAFKA, Set.of(RECEIVE)))` and matches by `TOPIC` property. `DEFAULT_TENANT_ID` is correct here: `matchesTenancy` returns descriptors registered under either `DEFAULT_TENANT_ID` (the deployment tenancy, as set by desiredstate) or `PLATFORM_TENANT_ID` (platform-global). If no matching descriptor is found for a topic, the processor logs a warning and fires a CloudEvent with `type = "io.casehub.platform.streams.kafka.unregistered"` to make the gap observable.
+**Channel→EndpointDescriptor correlation** at `@Observes StartupEvent`: reads `mp.messaging.incoming.${casehub.streams.kafka.channel}.topic` (or `.topics`) via MicroProfile Config, then calls `EndpointRegistry.discover(new EndpointQuery(TenancyConstants.DEFAULT_TENANT_ID, null, KAFKA, Set.of(RECEIVE)))` and matches by `TOPIC` property. `DEFAULT_TENANT_ID` is correct here: `matchesTenancy` returns descriptors registered under either `DEFAULT_TENANT_ID` (the deployment tenancy, as set by desiredstate) or `PLATFORM_TENANT_ID` (platform-global).
+
+**Multi-topic splitting:** For multi-topic channels (`topics=topic1,topic2`), the topics value is split by comma; each element is matched independently against `EndpointDescriptor.properties().get(TOPIC)` in the discovery result. Each topic expects a separate registered descriptor. Topics with no matching descriptor log a warning and produce CloudEvents with `type = "io.casehub.platform.streams.kafka.unregistered"` to make the gap observable. An unsplit string `"topic1,topic2"` would never match any descriptor (descriptors register individual topic names) — splitting is mandatory.
 
 **Message handling:**
 - Native CloudEvent (SmallRye CloudEvents Kafka deserialization): add `tenancyid` extension from Kafka header `X-Tenancy-ID` if absent, fire as-is.
@@ -213,15 +215,57 @@ Symmetric with `streams-kafka/`. Uses `quarkus-smallrye-reactive-messaging-amqp`
 
 ### `streams-webhook/`
 
-**Dependencies:** `quarkus-rest-jackson`, `cloudevents-json-jackson` (compile — CloudEvents structured format deserialization; `io.cloudevents.CloudEvent` is an interface with no Jackson annotations, so Jackson alone cannot deserialize `application/cloudevents+json` payloads without the CloudEvents Jackson module).
+**Dependencies:** `quarkus-rest-jackson` (for JSON response body), `cloudevents-json-jackson` (compile — registers `JsonFormat` via ServiceLoader, enabling `EventFormatProvider` to resolve `application/cloudevents+json`).
 
-**P0 format scope:** Structured CloudEvents format (`application/cloudevents+json`) only. Binary CloudEvents format (`ce-*` headers + arbitrary body) is deferred to P1+ (requires `cloudevents-http-basic` or manual header extraction). Return 400 Bad Request if `Content-Type` is not `application/cloudevents+json`.
+**Why not JAX-RS auto-binding to `CloudEvent`:** `io.cloudevents.CloudEvent` is an interface; `cloudevents-json-jackson` provides a Jackson `JsonDeserializer`, not a JAX-RS `MessageBodyReader<CloudEvent>`. Quarkus REST's Jackson reader is registered for `application/json`, not `application/cloudevents+json` — even with the Jackson module registered, Quarkus REST cannot auto-bind a `CloudEvent` parameter for the `application/cloudevents+json` content type. Accept `byte[]` and deserialize manually using the CloudEvents SDK format API.
 
-**REST endpoint:** `@POST /streams/webhook/{tenancyId}/{streamId}` — responds **202 Accepted** (fire-and-forget; `fireAsync()` does not block on observer completion; returning 200 would incorrectly imply synchronous processing).
+**P0 format scope:** Structured CloudEvents format (`application/cloudevents+json`) only. `@Consumes("application/cloudevents+json")` on the endpoint method causes Quarkus REST to enforce this automatically and return **415 Unsupported Media Type** for any other content type — no manual `Content-Type` inspection. Binary CloudEvents (`ce-*` headers + arbitrary body) deferred to P1+ (requires `cloudevents-http-basic` or manual header extraction).
 
-- `{streamId}` → `EndpointRegistry.resolve(Path.of("streams", streamId), tenancyIdFromPath)` where `tenancyIdFromPath` is the `{tenancyId}` URL path parameter used as the **registry lookup key**. If `Optional` is empty (unregistered or misspelled `streamId`), return **404 Not Found** — the misconfiguration must be observable, not silently discarded. The returned `descriptor.tenancyId()` — set by the operator at registration time — becomes the CloudEvent `tenancyid` extension value. The URL parameter is the routing key; the descriptor is the tenant authority.
-- **Security property:** The `tenancyId` URL path parameter is used only for the registry lookup — never as the CloudEvent `tenancyid` extension value. An external caller supplying a different `{tenancyId}` in the URL gets the descriptor's registered tenancyId in the event, not the caller-supplied value.
-- **P0 URL path note:** `PLATFORM_TENANT_ID = "platform"` (the literal string, not a UUID). For standard single-tenant deployments where desiredstate registers endpoints under `DEFAULT_TENANT_ID`, the webhook URL includes that UUID (e.g. `.../webhook/278776f9-e1b0-46fb-9032-8bddebdcf9ce/my-stream`). For platform-global descriptors, the URL includes the string `platform` (e.g. `.../webhook/platform/my-stream`). Both expose internal registration details to external callers. Per-tenant webhook routing with cleaner URLs is P1+.
+**REST endpoint:**
+
+```java
+@POST
+@Path("/streams/webhook/{tenancyId}/{streamId}")
+@Consumes("application/cloudevents+json")
+public Response receive(
+        byte[] body,
+        @PathParam("tenancyId") String tenancyIdFromPath,
+        @PathParam("streamId") String streamId) {
+
+    CloudEvent event = eventFormat.deserialize(body);  // eventFormat initialized at @PostConstruct
+    Optional<EndpointDescriptor> descriptor =
+        endpointRegistry.resolve(Path.of("streams", streamId), tenancyIdFromPath);
+    if (descriptor.isEmpty()) return Response.status(404).build();
+
+    CloudEvent enriched = buildCloudEvent(event, descriptor.get());
+    cloudEventBus.fireAsync(enriched)
+        .whenComplete((e, t) -> {
+            if (t != null) LOG.warnf(t, "CloudEvent observer failed for stream %s", streamId);
+        });
+    return Response.accepted().build();
+}
+```
+
+`eventFormat` is resolved at `@PostConstruct`:
+```java
+@PostConstruct
+void init() {
+    eventFormat = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
+    if (eventFormat == null) throw new IllegalStateException(
+        "CloudEvents JSON format not registered — cloudevents-json-jackson missing from classpath");
+}
+```
+
+`EventFormatProvider.getInstance()` uses ServiceLoader; `cloudevents-json-jackson` registers `JsonFormat` under `META-INF/services/io.cloudevents.core.format.EventFormat`. The null guard fails fast at startup (not at first request) on a misconfigured classpath.
+
+Responses:
+- **202 Accepted** on success (`fireAsync()` is fire-and-forget; 200 would imply synchronous completion)
+- **404 Not Found** when `streamId` resolves to empty `Optional` (unregistered or misspelled — must be observable, not silently discarded)
+- **415 Unsupported Media Type** when content type is not `application/cloudevents+json` (Quarkus REST enforces via `@Consumes`)
+
+**Security property:** The `tenancyId` URL path parameter is used only for the registry lookup key — never as the CloudEvent `tenancyid` extension value. An external caller supplying a different `{tenancyId}` in the URL gets `descriptor.tenancyId()` (operator-set at registration) in the event, not the caller-supplied value.
+
+**P0 URL path note:** `PLATFORM_TENANT_ID = "platform"` (the literal string, not a UUID). For standard single-tenant deployments where desiredstate registers endpoints under `DEFAULT_TENANT_ID`, the webhook URL includes that UUID (e.g. `.../webhook/278776f9-e1b0-46fb-9032-8bddebdcf9ce/my-stream`). For platform-global descriptors, the URL includes `platform` (e.g. `.../webhook/platform/my-stream`). Both expose internal registration details to external callers. Per-tenant webhook routing with cleaner URLs is P1+.
 
 **Self-registration at `@Observes StartupEvent`:**
 ```
@@ -309,22 +353,32 @@ void onEndpointRegistered(@ObservesAsync EndpointRegistered event) {
 
 **Route construction per descriptor:**
 
+`CamelContext.addRoutes(RoutesBuilder)` is declared `throws Exception`. `addRoute()` wraps the call and rethrows as `RuntimeException`:
+
 ```java
 void addRoute(EndpointDescriptor d) {
     String uri = d.properties().get(EndpointPropertyKeys.URL);
-    camelContext.addRoutes(new RouteBuilder() {
-        public void configure() {
-            from(uri).process(exchange -> {
-                CloudEvent ce = buildCloudEvent(exchange, d);
-                cloudEventBus.fireAsync(ce)
-                    .whenComplete((e, t) -> {
-                        if (t != null) LOG.warnf(t, "CloudEvent observer failed for route %s", uri);
-                    });
-            });
-        }
-    });
+    try {
+        camelContext.addRoutes(new RouteBuilder() {
+            public void configure() {
+                from(uri).process(exchange -> {
+                    CloudEvent ce = buildCloudEvent(exchange, d);
+                    cloudEventBus.fireAsync(ce)
+                        .whenComplete((e, t) -> {
+                            if (t != null) LOG.warnf(t, "CloudEvent observer failed for route %s", uri);
+                        });
+                });
+            }
+        });
+    } catch (Exception e) {
+        throw new RuntimeException("Failed to add Camel route for URI: " + uri, e);
+    }
 }
 ```
+
+**Exception propagation by call site:**
+- In `onStartup` (synchronous `@Observes StartupEvent`): `RuntimeException` propagates out of the observer, causing `camelStarted.set(true)` never to be reached and Quarkus to abort startup with a clear error. Fail-fast is correct — a bad Camel URI in `endpoints-config` should prevent the application from starting.
+- In `onEndpointRegistered` (async `@ObservesAsync`): `RuntimeException` propagates to the CDI async executor, which wraps it in `CompletionException` and completes the `CompletionStage` returned by `fireAsync()` exceptionally. The `whenComplete` in `InMemoryEndpointRegistry.register()` catches and WARN-logs it.
 
 Routes added to a running Quarkus Camel context via `addRoutes()` start automatically in Quarkus Camel 3.x.
 
@@ -377,23 +431,27 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 - [ ] `InMemoryEndpointRegistry.register()` fires `EndpointRegistered.fireAsync()` with `whenComplete` WARN logging
 - [ ] `NoOpEndpointRegistry.register()` remains a silent no-op — no event fired, no change to that class
 - [ ] `InMemoryEndpointRegistryTest` (existing, plain JUnit5) — all 14 tests pass unchanged
-- [ ] `InMemoryEndpointRegistryEventTest` (new, `@QuarkusTest`) — verifies `EndpointRegistered` fires on `register()` via `@ApplicationScoped` capture bean called directly by test
+- [ ] `InMemoryEndpointRegistryEventTest` (new, `@QuarkusTest`) — verifies `register()` completes without exception when CDI `Event<EndpointRegistered>` is injected (CDI async delivery not verifiable per GE-20260513-b15933; what is tested: null guard passes, `fireAsync()` is invoked, no NPE)
 
 **New stream modules**
 - [ ] All five stream modules added to root `pom.xml` `<modules>` in build order after `endpoints-memory`
 - [ ] All five stream modules build and pass tests
 - [ ] Each stream module activates by classpath presence
 - [ ] Each stream module fires `Event<CloudEvent>.fireAsync()` with all required fields set per the `tenancyid` source table
-- [ ] All three `EndpointRegistry.discover()` calls in stream modules (`streams-kafka`, `streams-poll`, `streams-camel`) use `TenancyConstants.DEFAULT_TENANT_ID` (not `PLATFORM_TENANT_ID`, not null)
+- [ ] All four `EndpointRegistry.discover()` calls in stream modules (`streams-kafka`, `streams-amqp`, `streams-poll`, `streams-camel`) use `TenancyConstants.DEFAULT_TENANT_ID` (not `PLATFORM_TENANT_ID`, not null)
 - [ ] `streams-kafka` channel name configurable via `casehub.streams.kafka.channel` (default `casehub-kafka-stream`)
+- [ ] `streams-kafka` splits multi-topic channel values by comma and matches each element independently against `EndpointDescriptor.properties().get(TOPIC)` — unsplit string lookup must not occur
 - [ ] `streams-kafka` does NOT observe `EndpointRegistered` — documented in Javadoc and pom `<description>`
 - [ ] `streams-amqp` does NOT observe `EndpointRegistered` — documented in Javadoc and pom `<description>` (same static-channel constraint as `streams-kafka`)
 - [ ] `streams-poll` catches per-endpoint HTTP exceptions, logs at WARN with URL, continues to next endpoint
 - [ ] `streams-camel` uses "discover at startup + idempotent post-startup handler" design (no buffering, no synchronized block)
+- [ ] `streams-camel` `addRoute()` wraps `CamelContext.addRoutes()` in `try/catch(Exception e)` and rethrows as `RuntimeException`; in `onStartup` this aborts startup (fail-fast); in `onEndpointRegistered` it propagates through CDI async executor to the `fireAsync().whenComplete` WARN logger
 - [ ] `streams-camel` URI-change P0 constraint documented in Javadoc and pom `<description>`
 - [ ] `streams-camel` startup-window gap documented in Javadoc
 - [ ] `streams-webhook` dependencies: `quarkus-rest-jackson` + `cloudevents-json-jackson` (compile); P0 = structured format only (`application/cloudevents+json`); binary format deferred to P1+
-- [ ] `streams-webhook` returns 202 Accepted on success; 404 Not Found when `streamId` resolves to empty `Optional`; 400 Bad Request when `Content-Type` is not `application/cloudevents+json`
+- [ ] `streams-webhook` accepts `byte[]` and deserializes via `EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE).deserialize(body)`; `@Consumes("application/cloudevents+json")` enforced; no JAX-RS auto-binding to `CloudEvent` type
+- [ ] `streams-webhook` resolves `EventFormat` at `@PostConstruct` and throws `IllegalStateException` if null (fail-fast on classpath misconfiguration)
+- [ ] `streams-webhook` returns 202 Accepted on success; 404 Not Found when `streamId` resolves to empty `Optional`; 415 Unsupported Media Type (via `@Consumes`) when content type is not `application/cloudevents+json`
 - [ ] `streams-webhook` self-registration uses `TenancyConstants.PLATFORM_TENANT_ID` as `tenancyId` (platform-wide receiver, visible to all tenant queries)
 - [ ] `streams-webhook` P0 URL path note (PLATFORM_TENANT_ID = "platform", DEFAULT_TENANT_ID = UUID) documented in Javadoc
 - [ ] `streams-webhook` config `casehub.streams.webhook.public-url` required (fail-fast at startup if absent)
