@@ -63,7 +63,7 @@ public static final String STREAM_EVENT_TYPE = "stream-event-type";
 
 **`EndpointPropertyKeys.TOPIC` Javadoc update**: Add `{@link EndpointProtocol#AMQP}` to the applies-to list. The constant applies to both KAFKA and AMQP. Remove "only" from the current text.
 
-**`EndpointPropertyKeys.URL` Javadoc update**: Add an explicit exclusion note: "KAFKA and AMQP are excluded — broker connection for both is Quarkus-managed via standard config (e.g. `kafka.bootstrap.servers`, `amqp-host`/`amqp-port`). Consistent with the TOPIC constant which says 'Applies to: KAFKA, AMQP only.'"
+**`EndpointPropertyKeys.URL` Javadoc update**: Add an explicit exclusion note: "KAFKA and AMQP are excluded — broker connection for both is Quarkus-managed via standard config (e.g. `kafka.bootstrap.servers`, `amqp-host`/`amqp-port`)."
 
 **`EndpointProtocol.AMQP`** (new enum value, inserted after `KAFKA`, before `MCP`):
 
@@ -255,7 +255,8 @@ Broadly symmetric with `streams-kafka/`. Uses `quarkus-smallrye-reactive-messagi
 **REST endpoint:**
 
 ```java
-@ApplicationScoped                     // class-level — @PostConstruct runs once; shared state
+@Startup                               // forces eager @PostConstruct at application startup
+@ApplicationScoped                     // class-level scope — eventFormat and self-registration shared
 @Path("/streams/webhook")
 public class WebhookResource {
 
@@ -502,7 +503,7 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 - [ ] All four `EndpointRegistry.discover()` calls in stream modules (`streams-kafka`, `streams-amqp`, `streams-poll`, `streams-camel`) use `TenancyConstants.DEFAULT_TENANT_ID` (not `PLATFORM_TENANT_ID`, not null)
 - [ ] `streams-kafka` channel name configurable via `casehub.streams.kafka.channel` (default `casehub-kafka-stream`)
 - [ ] `streams-kafka` splits multi-topic channel values by comma and matches each element independently against `EndpointDescriptor.properties().get(TOPIC)` — unsplit string lookup must not occur (Kafka-only; AMQP has no multi-address equivalent)
-- [ ] All five stream processor beans are `@ApplicationScoped` — required for shared startup state and observer callbacks; `@Dependent` (CDI default without explicit scope) would create per-invocation instances breaking the startup design
+- [ ] All five stream processor beans are `@ApplicationScoped`; `streams-webhook` additionally requires `@Startup` (forces eager `@PostConstruct`; other four modules use `@Observes StartupEvent` which achieves the same eager initialization automatically)
 - [ ] `streams-kafka` does NOT observe `EndpointRegistered` — documented in Javadoc and pom `<description>`
 - [ ] `streams-amqp` does NOT observe `EndpointRegistered` — documented in Javadoc and pom `<description>` (same static-channel constraint as `streams-kafka`)
 - [ ] `streams-poll` dependencies: `quarkus-scheduler` only (no additional HTTP dep — uses `java.net.http.HttpClient` from Java 21 stdlib; `quarkus-rest-client-jackson` not used)
@@ -513,7 +514,7 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 - [ ] `streams-camel` URI-change P0 constraint documented in Javadoc and pom `<description>`
 - [ ] `streams-camel` startup-window gap documented in Javadoc
 - [ ] `streams-webhook` dependencies: `quarkus-rest-jackson` + `cloudevents-json-jackson` (compile); P0 = structured format only (`application/cloudevents+json`); binary format deferred to P1+
-- [ ] `streams-webhook` JAX-RS resource class is `@ApplicationScoped` (not method-level; `@PostConstruct`-initialised `eventFormat` must be shared across requests)
+- [ ] `streams-webhook` JAX-RS resource class is `@Startup @ApplicationScoped` (`@Startup` forces `@PostConstruct` at application startup, not on first HTTP request; without it `eventFormat` is null and the self-registration does not occur until the first request)
 - [ ] `streams-webhook` accepts `byte[]`, deserializes via `EventFormatProvider`; `@Consumes("application/cloudevents+json")` enforced; no JAX-RS auto-binding to `CloudEvent` type
 - [ ] `streams-webhook` resolves `EventFormat` at `@PostConstruct`; throws `IllegalStateException` if null (fail-fast on classpath misconfiguration)
 - [ ] `streams-webhook` preserves incoming CloudEvent fields (type, id, source, time, subject, data, specversion, extensions) and sets/replaces only `tenancyid` from descriptor; does NOT override type with `STREAM_EVENT_TYPE`
@@ -536,7 +537,7 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 | Concern | Issue |
 |---------|-------|
 | `StreamContext` SPI — async tenancy propagation in processing chains that don't hold a `CloudEvent` reference | P1.8 — define SPI alongside the working propagation mechanism (Mutiny context or CDI scope backed by request-local storage); no standalone no-op SPI in P0 |
-| Multi-tenant stream discovery — all three stream `discover()` calls use `DEFAULT_TENANT_ID` in P0; in a multi-tenant deployment each tenant's endpoints land under their own tenancyId, which is never returned | P1+ — requires either `EndpointRegistry.discoverAll(...)` without tenant filter, or an injected tenant list that drives one `discover()` call per tenant |
+| Multi-tenant stream discovery — all four stream `discover()` calls use `DEFAULT_TENANT_ID` in P0 (`streams-kafka`, `streams-amqp`, `streams-poll`, `streams-camel`); in a multi-tenant deployment each tenant's endpoints land under their own tenancyId, which is never returned | P1+ — requires either `EndpointRegistry.discoverAll(...)` without tenant filter, or an injected tenant list that drives one `discover()` call per tenant |
 | Native CloudEvents Kafka passthrough (`streams-kafka`/`streams-amqp`) — detect CloudEvents encoding in incoming record and re-fire the existing event rather than wrapping bytes as data | P1+ — requires custom `KafkaRecordConsumer` with header inspection or two separate `@Incoming` channels; P0 always receives raw `byte[]` and builds from scratch |
 | Per-endpoint poll intervals | P1+ in poll module |
 | CloudEvent `subject` extraction from raw payload fields | P1+ |
