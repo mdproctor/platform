@@ -22,6 +22,13 @@
             <artifactId>mutiny</artifactId>
             <scope>provided</scope>
         </dependency>
+        <!--
+            Intentional transitive dep: io.cloudevents.CloudEvent must be visible to all
+            consumers of casehub-platform-api without each adding their own dep.
+            platform-api itself does not import CloudEvent at source level — it is present
+            here solely to make it available to stream modules and all other consumers
+            via the platform-api dependency graph (platform#98 spec requirement).
+        -->
         <dependency>
             <groupId>io.cloudevents</groupId>
             <artifactId>cloudevents-core</artifactId>

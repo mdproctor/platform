@@ -3,7 +3,7 @@ package io.casehub.platform.api.endpoints;
 /**
  * Identifies how to reach an endpoint — either by wire protocol or by invocation mechanism.
  *
- * <p>{@link #HTTP}, {@link #GRPC}, and {@link #KAFKA} name the underlying transport.
+ * <p>{@link #HTTP}, {@link #GRPC}, {@link #KAFKA}, and {@link #AMQP} name the underlying transport.
  * {@link #CAMEL} and {@link #QHORUS} name the invocation mechanism: {@code CAMEL} routes
  * through the Apache Camel dispatcher regardless of the route's own transport;
  * {@code QHORUS} invokes via the Qhorus channel dispatch API.
