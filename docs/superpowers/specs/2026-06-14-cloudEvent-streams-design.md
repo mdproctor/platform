@@ -224,7 +224,7 @@ Incoming payload is already a structured CloudEvent (`application/cloudevents+js
 
 ### `streams-kafka/`
 
-**Dependencies:** `quarkus-smallrye-reactive-messaging-kafka`, `cloudevents-json-jackson` (for native CloudEvents deserialization from Kafka when messages are in CloudEvent format).
+**Dependencies:** `quarkus-smallrye-reactive-messaging-kafka` only. `cloudevents-json-jackson` is NOT a dependency of `streams-kafka` — P0 always receives raw `byte[]` and builds CloudEvents from scratch; no native CloudEvents Kafka deserialization occurs.
 
 **Static channel constraint:** `streams-kafka` does **NOT** observe `@ObservesAsync EndpointRegistered`. Channels are declared via `@Incoming` annotations, which are static — the set of consumed topics is fixed at build time. KAFKA stream descriptors must be registered before application startup; use `endpoints-config` YAML or ensure desiredstate reconciliation completes before the app processes messages. For runtime-dynamic Kafka topic subscriptions, use `streams-camel` with the Camel Kafka component instead. This constraint defines the boundary between `streams-kafka` (static) and `streams-camel` (dynamic) — see the CAMEL/KAFKA mutual exclusion section.
 
@@ -236,9 +236,9 @@ Incoming payload is already a structured CloudEvent (`application/cloudevents+js
 
 **Message handling (P0 — always raw bytes):** Channel is typed `Message<byte[]>`. SmallRye Reactive Messaging channels are statically typed at build time — a single `@Incoming` channel cannot conditionally receive `Message<CloudEvent>` for CloudEvents-formatted records and `Message<byte[]>` for raw records. Always receive as `Message<byte[]>` and always build a CloudEvent from scratch using the descriptor's `STREAM_EVENT_TYPE` and message bytes as `data`. If the upstream producer sends a serialized CloudEvent, its bytes become the `data` field — the serialized form is preserved, but no attempt is made to parse or inspect it. Native CloudEvents Kafka passthrough (detect CloudEvent encoding, extract and re-fire the existing event) is P1+.
 
-**P0 dependency simplification:** Remove `cloudevents-json-jackson` from streams-kafka dependencies — no native CloudEvents deserialization occurs. Dependency is only `quarkus-smallrye-reactive-messaging-kafka`.
-
 ### `streams-amqp/`
+
+**Dependencies:** `quarkus-smallrye-reactive-messaging-amqp` only. Same raw-bytes-only P0 approach as Kafka — no `cloudevents-json-jackson` dependency.
 
 Broadly symmetric with `streams-kafka/`. Uses `quarkus-smallrye-reactive-messaging-amqp`. `EndpointProtocol.AMQP` + `EndpointCapability.RECEIVE` for discovery. `tenancyid` from AMQP message property `X-Tenancy-ID`; fallback to `EndpointDescriptor.tenancyId()`. Same static-channel constraint — does not observe `EndpointRegistered`. Same raw-bytes-always-build-from-scratch message handling as Kafka (P0).
 
@@ -255,19 +255,36 @@ Broadly symmetric with `streams-kafka/`. Uses `quarkus-smallrye-reactive-messagi
 **REST endpoint:**
 
 ```java
-@ApplicationScoped                     // class-level — @PostConstruct runs once; eventFormat shared
+@ApplicationScoped                     // class-level — @PostConstruct runs once; shared state
 @Path("/streams/webhook")
 public class WebhookResource {
 
     @Inject Event<CloudEvent> cloudEventBus;
     @Inject EndpointRegistry endpointRegistry;
+
+    @ConfigProperty(name = "casehub.streams.webhook.public-url")
+    String publicUrl;                  // required — Quarkus fails startup if absent (no defaultValue)
+
     private EventFormat eventFormat;
 
     @PostConstruct
     void init() {
+        // Validate CloudEvents format registration
         eventFormat = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
         if (eventFormat == null) throw new IllegalStateException(
             "CloudEvents JSON format not registered — cloudevents-json-jackson missing from classpath");
+
+        // Self-register the physical webhook receiver as a platform-global endpoint.
+        // Uses PLATFORM_TENANT_ID so it is visible in all tenant-scoped discover() calls.
+        // publicUrl is operator-set config; @ConfigProperty ensures fail-fast if absent.
+        endpointRegistry.register(new EndpointDescriptor(
+            Path.of("platform", "streams", "webhook"),
+            TenancyConstants.PLATFORM_TENANT_ID,
+            EndpointType.SERVICE,
+            EndpointProtocol.HTTP,
+            Map.of(EndpointPropertyKeys.URL, publicUrl),
+            null,
+            Set.of(EndpointCapability.RECEIVE)));
     }
 
     @POST
@@ -316,17 +333,9 @@ Responses:
 
 **P0 URL path note:** `PLATFORM_TENANT_ID = "platform"` (the literal string, not a UUID). For standard single-tenant deployments where desiredstate registers endpoints under `DEFAULT_TENANT_ID`, the webhook URL includes that UUID (e.g. `.../webhook/278776f9-e1b0-46fb-9032-8bddebdcf9ce/my-stream`). For platform-global descriptors, the URL includes `platform` (e.g. `.../webhook/platform/my-stream`). Both expose internal registration details to external callers. Per-tenant webhook routing with cleaner URLs is P1+.
 
-**Self-registration at `@Observes StartupEvent`:**
-```
-tenancyId = TenancyConstants.PLATFORM_TENANT_ID   (platform-wide service, visible to all tenants)
-Path.of("platform", "streams", "webhook")
-EndpointType.SERVICE
-EndpointProtocol.HTTP
-EndpointCapability.RECEIVE
-URL = casehub.streams.webhook.public-url config (required, no default — fail fast if absent)
-```
+**Self-registration:** see `init()` in the code snippet above. `PLATFORM_TENANT_ID` is correct for the physical receiver — `matchesTenancy` returns this descriptor for any tenant query, so any consumer calling `discover()` finds it regardless of their own tenant. `@ConfigProperty` injection provides the fail-fast guarantee: if `casehub.streams.webhook.public-url` is absent from config, Quarkus throws `DeploymentException` at startup before `init()` is ever called.
 
-`PLATFORM_TENANT_ID` for the self-registration is correct: `matchesTenancy` returns this descriptor for any tenant query, so any consumer calling `discover()` for its own tenant finds the physical receiver endpoint. Two distinct registry entries: the self-registration at `Path.of("platform", "streams", "webhook")` is the physical receiver. Each logical stream source is at `Path.of("streams", streamId)` registered by `casehub-ops`, not this module. Different paths, different semantics — not a conflict.
+Two distinct registry entries: the self-registration at `Path.of("platform", "streams", "webhook")` is the physical receiver. Each logical stream source is at `Path.of("streams", streamId)` registered by `casehub-ops`, not this module. Different paths, different semantics — not a conflict.
 
 ### `streams-poll/`
 
