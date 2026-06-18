@@ -46,12 +46,17 @@ CDI event type. Fired by `InMemoryEndpointRegistry.register()` via `Event<Endpoi
 ```java
 /**
  * Logical CloudEvent {@code type} for a stream source — reverse-DNS, e.g.
- * {@code io.casehub.iot.temperature}. All stream modules read this from
- * {@link EndpointDescriptor#properties()} to set the CloudEvent {@code type} field.
+ * {@code io.casehub.iot.temperature}. Stream modules that build CloudEvents from
+ * raw payloads read this from {@link EndpointDescriptor#properties()} to set the
+ * CloudEvent {@code type} field.
  *
- * <p>Applies to: all stream endpoint protocols
- * ({@link EndpointProtocol#KAFKA}, {@link EndpointProtocol#AMQP},
- * {@link EndpointProtocol#HTTP}, {@link EndpointProtocol#CAMEL}).
+ * <p>Applies to: {@link EndpointProtocol#KAFKA}, {@link EndpointProtocol#AMQP},
+ * {@link EndpointProtocol#HTTP} ({@code streams-poll} only),
+ * {@link EndpointProtocol#CAMEL}.
+ *
+ * <p><b>Not used by {@code streams-webhook}.</b> Webhook requests are already
+ * structured CloudEvents; their {@code type} field is preserved from the incoming
+ * event and not overridden by the descriptor.
  */
 public static final String STREAM_EVENT_TYPE = "stream-event-type";
 ```
@@ -167,17 +172,39 @@ Common compile deps:
 
 ### Common CloudEvent construction
 
-All stream modules produce `CloudEvent` with:
+Two distinct construction paths depending on whether the incoming message is raw bytes or already a structured CloudEvent.
+
+**Path 1 — build from scratch** (`streams-kafka`, `streams-amqp`, `streams-poll`, `streams-camel`):
+
+Incoming payload is raw bytes (or a Kafka/AMQP message record). A new CloudEvent is constructed:
 
 | Field | Value |
 |-------|-------|
 | `type` | `EndpointDescriptor.properties().get(STREAM_EVENT_TYPE)` |
 | `source` | logical producer URI, module-specific (e.g. `/platform/streams/kafka/{topic}`) |
-| `subject` | `null` for raw payloads (CloudEvents spec allows null); preserved if incoming message is already a CloudEvent (detected by `application/cloudevents+json` content type or binary CloudEvents marker) |
+| `subject` | `null` — CloudEvents spec allows null for raw payloads; subject extraction from payload fields is P1+ |
 | `id` | `UUID.randomUUID().toString()` |
-| `time` | message/frame timestamp if available, `OffsetDateTime.now()` otherwise |
-| `data` | raw payload bytes or structured payload |
+| `time` | message timestamp if available in transport metadata, `OffsetDateTime.now()` otherwise |
+| `data` | raw payload bytes |
 | `tenancyid` extension | source varies by module — see below |
+
+**Path 2 — preserve and enrich** (`streams-webhook` only):
+
+Incoming payload is already a structured CloudEvent (`application/cloudevents+json`). The existing CloudEvent is preserved and only `tenancyid` is added:
+
+| Field | Value |
+|-------|-------|
+| `type` | **preserved** from incoming event |
+| `id` | **preserved** — consumer idempotency depends on stable (id, source) identity |
+| `source` | **preserved** — sender's source URI; losing provenance would break observability |
+| `time` | **preserved** |
+| `subject` | **preserved** |
+| `data` | **preserved** |
+| `specversion` | **preserved** |
+| all other extensions | **preserved** |
+| `tenancyid` extension | `EndpointDescriptor.tenancyId()` — operator-set, overrides any caller-supplied value |
+
+`buildCloudEvent(incomingEvent, descriptor)` for webhook: clone the incoming event and set/replace the `tenancyid` extension with `descriptor.tenancyId()`. The `STREAM_EVENT_TYPE` descriptor property is not used.
 
 `tenancyid` source by module:
 
@@ -205,13 +232,15 @@ All stream modules produce `CloudEvent` with:
 
 **Multi-topic splitting:** For multi-topic channels (`topics=topic1,topic2`), the topics value is split by comma; each element is matched independently against `EndpointDescriptor.properties().get(TOPIC)` in the discovery result. Each topic expects a separate registered descriptor. Topics with no matching descriptor log a warning and produce CloudEvents with `type = "io.casehub.platform.streams.kafka.unregistered"` to make the gap observable. An unsplit string `"topic1,topic2"` would never match any descriptor (descriptors register individual topic names) — splitting is mandatory.
 
-**Message handling:**
-- Native CloudEvent (SmallRye CloudEvents Kafka deserialization): add `tenancyid` extension from Kafka header `X-Tenancy-ID` if absent, fire as-is.
-- Raw bytes/String: build a CloudEvent using the descriptor's `STREAM_EVENT_TYPE` and message body as `data`.
+**Message handling (P0 — always raw bytes):** Channel is typed `Message<byte[]>`. SmallRye Reactive Messaging channels are statically typed at build time — a single `@Incoming` channel cannot conditionally receive `Message<CloudEvent>` for CloudEvents-formatted records and `Message<byte[]>` for raw records. Always receive as `Message<byte[]>` and always build a CloudEvent from scratch using the descriptor's `STREAM_EVENT_TYPE` and message bytes as `data`. If the upstream producer sends a serialized CloudEvent, its bytes become the `data` field — the serialized form is preserved, but no attempt is made to parse or inspect it. Native CloudEvents Kafka passthrough (detect CloudEvent encoding, extract and re-fire the existing event) is P1+.
+
+**P0 dependency simplification:** Remove `cloudevents-json-jackson` from streams-kafka dependencies — no native CloudEvents deserialization occurs. Dependency is only `quarkus-smallrye-reactive-messaging-kafka`.
 
 ### `streams-amqp/`
 
-Symmetric with `streams-kafka/`. Uses `quarkus-smallrye-reactive-messaging-amqp`. `EndpointProtocol.AMQP` + `EndpointCapability.RECEIVE` for discovery. `tenancyid` from AMQP message property `X-Tenancy-ID`; fallback to `EndpointDescriptor.tenancyId()`. Same static-channel constraint — does not observe `EndpointRegistered`.
+Broadly symmetric with `streams-kafka/`. Uses `quarkus-smallrye-reactive-messaging-amqp`. `EndpointProtocol.AMQP` + `EndpointCapability.RECEIVE` for discovery. `tenancyid` from AMQP message property `X-Tenancy-ID`; fallback to `EndpointDescriptor.tenancyId()`. Same static-channel constraint — does not observe `EndpointRegistered`. Same raw-bytes-always-build-from-scratch message handling as Kafka (P0).
+
+**AMQP multi-address divergence from Kafka:** SmallRye AMQP reactive messaging connector does not support a plural-address config key equivalent to Kafka's `topics=a,b`. Each AMQP channel has exactly one address. The multi-topic comma-split logic specified for `streams-kafka` does not apply to `streams-amqp` — there is no multi-address config key to split. For multi-queue AMQP fan-in, use `streams-camel` with a Camel AMQP component. This is the point where `streams-amqp` diverges from the Kafka symmetric description.
 
 ### `streams-webhook/`
 
@@ -227,17 +256,27 @@ Symmetric with `streams-kafka/`. Uses `quarkus-smallrye-reactive-messaging-amqp`
 @POST
 @Path("/streams/webhook/{tenancyId}/{streamId}")
 @Consumes("application/cloudevents+json")
+@ApplicationScoped
 public Response receive(
         byte[] body,
         @PathParam("tenancyId") String tenancyIdFromPath,
         @PathParam("streamId") String streamId) {
 
-    CloudEvent event = eventFormat.deserialize(body);  // eventFormat initialized at @PostConstruct
+    CloudEvent incoming;
+    try {
+        incoming = eventFormat.deserialize(body);
+    } catch (RuntimeException e) {
+        return Response.status(400).entity("Invalid CloudEvent body: " + e.getMessage()).build();
+    }
+
     Optional<EndpointDescriptor> descriptor =
         endpointRegistry.resolve(Path.of("streams", streamId), tenancyIdFromPath);
     if (descriptor.isEmpty()) return Response.status(404).build();
 
-    CloudEvent enriched = buildCloudEvent(event, descriptor.get());
+    // Preserve all incoming fields; enrich with operator-set tenancyid
+    CloudEvent enriched = CloudEventBuilder.from(incoming)
+        .withExtension("tenancyid", descriptor.get().tenancyId())
+        .build();
     cloudEventBus.fireAsync(enriched)
         .whenComplete((e, t) -> {
             if (t != null) LOG.warnf(t, "CloudEvent observer failed for stream %s", streamId);
@@ -245,6 +284,8 @@ public Response receive(
     return Response.accepted().build();
 }
 ```
+
+`CloudEventBuilder.from(incoming)` copies all fields (type, id, source, time, subject, data, specversion, extensions) from the incoming event. `.withExtension("tenancyid", ...)` sets or replaces the tenancyid extension with the operator-authoritative value from the descriptor. Any caller-supplied `tenancyid` extension in the incoming event is overwritten — the descriptor is the authority.
 
 `eventFormat` is resolved at `@PostConstruct`:
 ```java
@@ -260,6 +301,7 @@ void init() {
 
 Responses:
 - **202 Accepted** on success (`fireAsync()` is fire-and-forget; 200 would imply synchronous completion)
+- **400 Bad Request** when the body passes the content-type gate but is not a valid structured CloudEvent (`eventFormat.deserialize()` throws)
 - **404 Not Found** when `streamId` resolves to empty `Optional` (unregistered or misspelled — must be observable, not silently discarded)
 - **415 Unsupported Media Type** when content type is not `application/cloudevents+json` (Quarkus REST enforces via `@Consumes`)
 
@@ -314,6 +356,8 @@ Per endpoint: HTTP GET to `EndpointPropertyKeys.URL`; map response body to Cloud
 ### `streams-camel/`
 
 **Dependencies:** `camel-quarkus-core` + Camel components as needed by the consumer application. This module provides the route-building infrastructure; the consumer adds component deps (e.g. `camel-quarkus-kafka` for dynamic Kafka, `camel-quarkus-amqp` for AMQP via Camel).
+
+**Bean scope — `@ApplicationScoped` required:** The processor bean holds application-lifetime state (`camelStarted`, `routedUris`) and receives CDI observer notifications across multiple threads. Without `@ApplicationScoped`, CDI would use `@Dependent` (the default for beans without a scope annotation), creating a new instance per injection point or event notification — `camelStarted` and `routedUris` would be per-invocation, breaking the startup design entirely. This applies to all five stream processor beans: each holds shared startup state or `@Scheduled`/observer callbacks that require application-scoped identity.
 
 **Design: discover at startup + idempotent post-startup handler**
 
@@ -409,7 +453,7 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 ### `InMemoryEndpointRegistry` test classes
 
 - **`InMemoryEndpointRegistryTest`** (existing, plain JUnit5, no CDI): all 14 tests unchanged — null event bus means no events fired, correct for unit test context.
-- **`InMemoryEndpointRegistryEventTest`** (new, `@QuarkusTest`): verifies `EndpointRegistered` fires on `register()`. Uses `@ApplicationScoped` capture bean with `CountDownLatch`; test calls capture bean directly.
+- **`InMemoryEndpointRegistryEventTest`** (new, `@QuarkusTest`): injects the CDI-managed `InMemoryEndpointRegistry` and calls `register(endpoint)`. Verifies the call completes without NPE — CDI wiring is correct, the null guard is bypassed (non-null event bus injected by CDI), and `fireAsync()` is invoked. No capture bean or `CountDownLatch` needed — CDI async delivery is untestable in `@QuarkusTest` per GE-20260513-b15933; what is verified is CDI wiring correctness, not delivery.
 
 ---
 
@@ -431,7 +475,7 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 - [ ] `InMemoryEndpointRegistry.register()` fires `EndpointRegistered.fireAsync()` with `whenComplete` WARN logging
 - [ ] `NoOpEndpointRegistry.register()` remains a silent no-op — no event fired, no change to that class
 - [ ] `InMemoryEndpointRegistryTest` (existing, plain JUnit5) — all 14 tests pass unchanged
-- [ ] `InMemoryEndpointRegistryEventTest` (new, `@QuarkusTest`) — verifies `register()` completes without exception when CDI `Event<EndpointRegistered>` is injected (CDI async delivery not verifiable per GE-20260513-b15933; what is tested: null guard passes, `fireAsync()` is invoked, no NPE)
+- [ ] `InMemoryEndpointRegistryEventTest` (new, `@QuarkusTest`) — injects CDI-managed `InMemoryEndpointRegistry`, calls `register()`, verifies no NPE (CDI wiring correct, null guard bypassed); no capture bean or `CountDownLatch` (CDI async delivery untestable per GE-20260513-b15933)
 
 **New stream modules**
 - [ ] All five stream modules added to root `pom.xml` `<modules>` in build order after `endpoints-memory`
@@ -440,7 +484,8 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 - [ ] Each stream module fires `Event<CloudEvent>.fireAsync()` with all required fields set per the `tenancyid` source table
 - [ ] All four `EndpointRegistry.discover()` calls in stream modules (`streams-kafka`, `streams-amqp`, `streams-poll`, `streams-camel`) use `TenancyConstants.DEFAULT_TENANT_ID` (not `PLATFORM_TENANT_ID`, not null)
 - [ ] `streams-kafka` channel name configurable via `casehub.streams.kafka.channel` (default `casehub-kafka-stream`)
-- [ ] `streams-kafka` splits multi-topic channel values by comma and matches each element independently against `EndpointDescriptor.properties().get(TOPIC)` — unsplit string lookup must not occur
+- [ ] `streams-kafka` splits multi-topic channel values by comma and matches each element independently against `EndpointDescriptor.properties().get(TOPIC)` — unsplit string lookup must not occur (Kafka-only; AMQP has no multi-address equivalent)
+- [ ] All five stream processor beans are `@ApplicationScoped` — required for shared startup state and observer callbacks; `@Dependent` (CDI default without explicit scope) would create per-invocation instances breaking the startup design
 - [ ] `streams-kafka` does NOT observe `EndpointRegistered` — documented in Javadoc and pom `<description>`
 - [ ] `streams-amqp` does NOT observe `EndpointRegistered` — documented in Javadoc and pom `<description>` (same static-channel constraint as `streams-kafka`)
 - [ ] `streams-poll` catches per-endpoint HTTP exceptions, logs at WARN with URL, continues to next endpoint
@@ -449,9 +494,11 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 - [ ] `streams-camel` URI-change P0 constraint documented in Javadoc and pom `<description>`
 - [ ] `streams-camel` startup-window gap documented in Javadoc
 - [ ] `streams-webhook` dependencies: `quarkus-rest-jackson` + `cloudevents-json-jackson` (compile); P0 = structured format only (`application/cloudevents+json`); binary format deferred to P1+
-- [ ] `streams-webhook` accepts `byte[]` and deserializes via `EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE).deserialize(body)`; `@Consumes("application/cloudevents+json")` enforced; no JAX-RS auto-binding to `CloudEvent` type
-- [ ] `streams-webhook` resolves `EventFormat` at `@PostConstruct` and throws `IllegalStateException` if null (fail-fast on classpath misconfiguration)
-- [ ] `streams-webhook` returns 202 Accepted on success; 404 Not Found when `streamId` resolves to empty `Optional`; 415 Unsupported Media Type (via `@Consumes`) when content type is not `application/cloudevents+json`
+- [ ] `streams-webhook` accepts `byte[]`, deserializes via `EventFormatProvider`; `@Consumes("application/cloudevents+json")` enforced; no JAX-RS auto-binding to `CloudEvent` type
+- [ ] `streams-webhook` resolves `EventFormat` at `@PostConstruct`; throws `IllegalStateException` if null (fail-fast on classpath misconfiguration)
+- [ ] `streams-webhook` preserves incoming CloudEvent fields (type, id, source, time, subject, data, specversion, extensions) and sets/replaces only `tenancyid` from descriptor; does NOT override type with `STREAM_EVENT_TYPE`
+- [ ] `streams-webhook` uses `CloudEventBuilder.from(incoming).withExtension("tenancyid", descriptor.tenancyId()).build()`
+- [ ] `streams-webhook` returns: 202 Accepted (success); 400 Bad Request (body is not valid structured CloudEvent); 404 Not Found (`streamId` not in registry); 415 Unsupported Media Type (wrong `Content-Type`, via `@Consumes`)
 - [ ] `streams-webhook` self-registration uses `TenancyConstants.PLATFORM_TENANT_ID` as `tenancyId` (platform-wide receiver, visible to all tenant queries)
 - [ ] `streams-webhook` P0 URL path note (PLATFORM_TENANT_ID = "platform", DEFAULT_TENANT_ID = UUID) documented in Javadoc
 - [ ] `streams-webhook` config `casehub.streams.webhook.public-url` required (fail-fast at startup if absent)
@@ -470,6 +517,7 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 |---------|-------|
 | `StreamContext` SPI — async tenancy propagation in processing chains that don't hold a `CloudEvent` reference | P1.8 — define SPI alongside the working propagation mechanism (Mutiny context or CDI scope backed by request-local storage); no standalone no-op SPI in P0 |
 | Multi-tenant stream discovery — all three stream `discover()` calls use `DEFAULT_TENANT_ID` in P0; in a multi-tenant deployment each tenant's endpoints land under their own tenancyId, which is never returned | P1+ — requires either `EndpointRegistry.discoverAll(...)` without tenant filter, or an injected tenant list that drives one `discover()` call per tenant |
+| Native CloudEvents Kafka passthrough (`streams-kafka`/`streams-amqp`) — detect CloudEvents encoding in incoming record and re-fire the existing event rather than wrapping bytes as data | P1+ — requires custom `KafkaRecordConsumer` with header inspection or two separate `@Incoming` channels; P0 always receives raw `byte[]` and builds from scratch |
 | Per-endpoint poll intervals | P1+ in poll module |
 | CloudEvent `subject` extraction from raw payload fields | P1+ |
 | Stream source credential lookup (`credentialRef` on EndpointDescriptor) | P1+ |
