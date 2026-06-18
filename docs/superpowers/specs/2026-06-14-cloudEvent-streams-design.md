@@ -201,7 +201,7 @@ All stream modules produce `CloudEvent` with:
 
 **P0 single-channel constraint:** One `@Incoming("casehub-kafka-stream")` channel per deployment (channel name configurable via `casehub.streams.kafka.channel`, default `casehub-kafka-stream`). Multiple Kafka topics can feed the same channel via `mp.messaging.incoming.casehub-kafka-stream.topics=topic1,topic2` (SmallRye multi-topic). For multiple independently-configured channels, deploy `streams-camel`.
 
-**Channel→EndpointDescriptor correlation** at `@Observes StartupEvent`: reads `mp.messaging.incoming.${casehub.streams.kafka.channel}.topic` (or `.topics`) via MicroProfile Config, then calls `EndpointRegistry.discover(new EndpointQuery(TenancyConstants.PLATFORM_TENANT_ID, null, KAFKA, Set.of(RECEIVE)))` and matches by `TOPIC` property. If no matching descriptor is found for a topic, the processor logs a warning and fires a CloudEvent with `type = "io.casehub.platform.streams.kafka.unregistered"` to make the gap observable.
+**Channel→EndpointDescriptor correlation** at `@Observes StartupEvent`: reads `mp.messaging.incoming.${casehub.streams.kafka.channel}.topic` (or `.topics`) via MicroProfile Config, then calls `EndpointRegistry.discover(new EndpointQuery(TenancyConstants.DEFAULT_TENANT_ID, null, KAFKA, Set.of(RECEIVE)))` and matches by `TOPIC` property. `DEFAULT_TENANT_ID` is correct here: `matchesTenancy` returns descriptors registered under either `DEFAULT_TENANT_ID` (the deployment tenancy, as set by desiredstate) or `PLATFORM_TENANT_ID` (platform-global). If no matching descriptor is found for a topic, the processor logs a warning and fires a CloudEvent with `type = "io.casehub.platform.streams.kafka.unregistered"` to make the gap observable.
 
 **Message handling:**
 - Native CloudEvent (SmallRye CloudEvents Kafka deserialization): add `tenancyid` extension from Kafka header `X-Tenancy-ID` if absent, fire as-is.
@@ -213,16 +213,19 @@ Symmetric with `streams-kafka/`. Uses `quarkus-smallrye-reactive-messaging-amqp`
 
 ### `streams-webhook/`
 
-**Dependencies:** `quarkus-rest-jackson` (CloudEvents HTTP binding deserialization).
+**Dependencies:** `quarkus-rest-jackson`, `cloudevents-json-jackson` (compile — CloudEvents structured format deserialization; `io.cloudevents.CloudEvent` is an interface with no Jackson annotations, so Jackson alone cannot deserialize `application/cloudevents+json` payloads without the CloudEvents Jackson module).
 
-**REST endpoint:** `@POST /streams/webhook/{tenancyId}/{streamId}` — responds **202 Accepted** (fire-and-forget; `fireAsync()` does not block on observer completion; returning 200 with a body would incorrectly imply synchronous processing).
+**P0 format scope:** Structured CloudEvents format (`application/cloudevents+json`) only. Binary CloudEvents format (`ce-*` headers + arbitrary body) is deferred to P1+ (requires `cloudevents-http-basic` or manual header extraction). Return 400 Bad Request if `Content-Type` is not `application/cloudevents+json`.
 
-- `{streamId}` → `EndpointRegistry.resolve(Path.of("streams", streamId), tenancyIdFromPath)` where `tenancyIdFromPath` is the `{tenancyId}` URL path parameter used as the **registry lookup key**. The returned `descriptor.tenancyId()` — set by the operator at registration time — becomes the CloudEvent `tenancyid` extension value. The URL parameter is the routing key; the descriptor is the tenant authority.
+**REST endpoint:** `@POST /streams/webhook/{tenancyId}/{streamId}` — responds **202 Accepted** (fire-and-forget; `fireAsync()` does not block on observer completion; returning 200 would incorrectly imply synchronous processing).
+
+- `{streamId}` → `EndpointRegistry.resolve(Path.of("streams", streamId), tenancyIdFromPath)` where `tenancyIdFromPath` is the `{tenancyId}` URL path parameter used as the **registry lookup key**. If `Optional` is empty (unregistered or misspelled `streamId`), return **404 Not Found** — the misconfiguration must be observable, not silently discarded. The returned `descriptor.tenancyId()` — set by the operator at registration time — becomes the CloudEvent `tenancyid` extension value. The URL parameter is the routing key; the descriptor is the tenant authority.
 - **Security property:** The `tenancyId` URL path parameter is used only for the registry lookup — never as the CloudEvent `tenancyid` extension value. An external caller supplying a different `{tenancyId}` in the URL gets the descriptor's registered tenancyId in the event, not the caller-supplied value.
-- **P0 URL path note:** If the stream descriptor uses `TenancyConstants.PLATFORM_TENANT_ID`, the webhook URL will include the sentinel UUID as the `{tenancyId}` segment (e.g. `.../webhook/00000000-0000-0000-0000-000000000000/my-stream`). This exposes an internal implementation detail to external callers. Per-tenant webhook routing with cleaner URLs is P1+.
+- **P0 URL path note:** `PLATFORM_TENANT_ID = "platform"` (the literal string, not a UUID). For standard single-tenant deployments where desiredstate registers endpoints under `DEFAULT_TENANT_ID`, the webhook URL includes that UUID (e.g. `.../webhook/278776f9-e1b0-46fb-9032-8bddebdcf9ce/my-stream`). For platform-global descriptors, the URL includes the string `platform` (e.g. `.../webhook/platform/my-stream`). Both expose internal registration details to external callers. Per-tenant webhook routing with cleaner URLs is P1+.
 
 **Self-registration at `@Observes StartupEvent`:**
 ```
+tenancyId = TenancyConstants.PLATFORM_TENANT_ID   (platform-wide service, visible to all tenants)
 Path.of("platform", "streams", "webhook")
 EndpointType.SERVICE
 EndpointProtocol.HTTP
@@ -230,7 +233,7 @@ EndpointCapability.RECEIVE
 URL = casehub.streams.webhook.public-url config (required, no default — fail fast if absent)
 ```
 
-Two distinct registry entries: the module's self-registration at `Path.of("platform", "streams", "webhook")` is the physical receiver entry. Each logical stream source is at `Path.of("streams", streamId)` and is registered by `casehub-ops/StreamEndpointNodeProvisioner`, not by this module. Different paths, different semantics — not a conflict.
+`PLATFORM_TENANT_ID` for the self-registration is correct: `matchesTenancy` returns this descriptor for any tenant query, so any consumer calling `discover()` for its own tenant finds the physical receiver endpoint. Two distinct registry entries: the self-registration at `Path.of("platform", "streams", "webhook")` is the physical receiver. Each logical stream source is at `Path.of("streams", streamId)` registered by `casehub-ops`, not this module. Different paths, different semantics — not a conflict.
 
 ### `streams-poll/`
 
@@ -242,14 +245,23 @@ Two distinct registry entries: the module's self-registration at `Path.of("platf
 @Scheduled(every = "${casehub.streams.poll.interval:60s}")
 void poll() {
     endpointRegistry.discover(
-        new EndpointQuery(TenancyConstants.PLATFORM_TENANT_ID, null, HTTP, Set.of(QUERY))
-    ).forEach(this::pollAndFire);
+        new EndpointQuery(TenancyConstants.DEFAULT_TENANT_ID, null, HTTP, Set.of(QUERY))
+    ).forEach(descriptor -> {
+        try {
+            pollAndFire(descriptor);
+        } catch (Exception e) {
+            LOG.warnf(e, "Poll failed for endpoint %s — continuing to next endpoint",
+                descriptor.properties().get(EndpointPropertyKeys.URL));
+        }
+    });
 }
 ```
 
 Per endpoint: HTTP GET to `EndpointPropertyKeys.URL`; map response body to CloudEvent `data`; set `STREAM_EVENT_TYPE` from descriptor; fire `Event<CloudEvent>.fireAsync()`.
 
-**Tenancy scope for discovery:** discovers `EndpointProtocol.HTTP + EndpointCapability.QUERY` endpoints for `TenancyConstants.PLATFORM_TENANT_ID` (platform-global) in P0. `EndpointQuery` requires a non-null `tenancyId` — passing null throws `NullPointerException` at construction (confirmed via `EndpointQuery` source: `Objects.requireNonNull(tenancyId)`). Operators must register poll endpoints under `PLATFORM_TENANT_ID`. Per-tenant poll scheduling (to discover tenant-scoped `HTTP + QUERY` endpoints) is P1+.
+**Tenancy scope for discovery:** `DEFAULT_TENANT_ID` is correct — `matchesTenancy` returns descriptors under `DEFAULT_TENANT_ID` (desiredstate-registered endpoints) and `PLATFORM_TENANT_ID` (platform-global endpoints). `EndpointQuery` requires non-null `tenancyId`: `Objects.requireNonNull(tenancyId)` confirmed in source. Multi-tenant poll scheduling (discovering per-tenant `HTTP + QUERY` endpoints independently) is P1+.
+
+**Per-endpoint failure handling:** Exceptions from HTTP GET (4xx, 5xx, connection timeout) are caught per-endpoint, logged at WARN with the failing URL, and execution continues to the next endpoint. Allowing exceptions to propagate would abort the entire `@Scheduled` invocation on the first bad endpoint, silencing all subsequent endpoints until the next interval.
 
 **`tenancyid`:** `EndpointDescriptor.tenancyId()`.
 
@@ -272,7 +284,7 @@ void onStartup(@Observes StartupEvent ev) {
     // @Startup @ApplicationScoped beans fully execute @PostConstruct before StartupEvent fires,
     // so discover() sees the complete pre-startup registry state.
     endpointRegistry.discover(
-        new EndpointQuery(TenancyConstants.PLATFORM_TENANT_ID, null, CAMEL, Set.of(RECEIVE))
+        new EndpointQuery(TenancyConstants.DEFAULT_TENANT_ID, null, CAMEL, Set.of(RECEIVE))
     ).forEach(d -> {
         String uri = d.properties().get(EndpointPropertyKeys.URL);
         if (routedUris.add(uri)) addRoute(d);   // atomic — concurrent calls safe
@@ -337,7 +349,7 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 | `streams-kafka` | SmallRye `@InMemoryConnector` (test scope via `smallrye-reactive-messaging-testing`) |
 | `streams-amqp` | SmallRye `@InMemoryConnector` — same pattern |
 | `streams-webhook` | Quarkus REST Assured — `POST /streams/webhook/{tenancyId}/{streamId}`, verify 202 Accepted |
-| `streams-poll` | WireMock (raw, not quarkiverse extension — see L7 gotcha about quarkiverse WireMock breaking on Quarkus 3.32.x) |
+| `streams-poll` | WireMock raw — `org.wiremock:wiremock:3.13.0` (not quarkiverse extension; see L7 gotcha: quarkiverse WireMock 1.4.1 breaks on Quarkus 3.32.x due to removed `GlobalDevServicesConfig$Enabled` class) |
 | `streams-camel` | `camel-quarkus-mock` or `direct:` endpoint URI in test config |
 
 ### `InMemoryEndpointRegistry` test classes
@@ -349,37 +361,48 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 
 ## Acceptance criteria
 
+**platform-api and parent pom**
 - [ ] `casehub-platform-parent` pom.xml `<dependencyManagement>` has direct entries for `cloudevents-core:4.0.1`, `cloudevents-api:4.0.1`, `cloudevents-json-jackson:4.0.1`
 - [ ] `casehub-platform-api` pom.xml has `cloudevents-core` compile dep (no version — managed by parent)
 - [ ] `io.cloudevents.CloudEvent` visible to all consumers of `casehub-platform-api` transitively
 - [ ] `EndpointRegistered` record in `io.casehub.platform.api.endpoints`
 - [ ] `EndpointRegistry` interface Javadoc states the `EndpointRegistered` firing obligation for non-no-op implementations
 - [ ] `EndpointPropertyKeys.STREAM_EVENT_TYPE` constant added with full Javadoc
-- [ ] `EndpointPropertyKeys.TOPIC` Javadoc updated to include `EndpointProtocol#AMQP` in the applies-to list
-- [ ] `EndpointProtocol.AMQP` enum value added after `KAFKA`, before `MCP`, with `{@link EndpointPropertyKeys#TOPIC}` link form (consistent with `KAFKA` entry)
+- [ ] `EndpointPropertyKeys.TOPIC` Javadoc updated to include `EndpointProtocol#AMQP` in the applies-to list (remove "only")
+- [ ] `EndpointProtocol.AMQP` enum value added after `KAFKA`, before `MCP`, with `{@link EndpointPropertyKeys#TOPIC}` link form
+
+**endpoints-memory changes**
+- [ ] `endpoints-memory/pom.xml` adds `quarkus-maven-plugin` (goals: `generate-code` + `generate-code-tests` only, no `build`) and `quarkus-junit5` (test scope) — required for `@QuarkusTest` in `InMemoryEndpointRegistryEventTest`; `casehub-platform` is NOT needed in test scope (`Event<T>` is a CDI built-in and `InMemoryEndpointRegistry @Alternative @Priority(100)` is the only `EndpointRegistry` bean present)
 - [ ] `InMemoryEndpointRegistry` uses constructor injection (`@Inject` constructor + package-private no-arg) with null guard in `register()`
 - [ ] `InMemoryEndpointRegistry.register()` fires `EndpointRegistered.fireAsync()` with `whenComplete` WARN logging
 - [ ] `NoOpEndpointRegistry.register()` remains a silent no-op — no event fired, no change to that class
-- [ ] `InMemoryEndpointRegistryTest` (existing) all 14 tests pass unchanged
-- [ ] `InMemoryEndpointRegistryEventTest` (new `@QuarkusTest`) verifies `EndpointRegistered` fires on `register()`
+- [ ] `InMemoryEndpointRegistryTest` (existing, plain JUnit5) — all 14 tests pass unchanged
+- [ ] `InMemoryEndpointRegistryEventTest` (new, `@QuarkusTest`) — verifies `EndpointRegistered` fires on `register()` via `@ApplicationScoped` capture bean called directly by test
+
+**New stream modules**
 - [ ] All five stream modules added to root `pom.xml` `<modules>` in build order after `endpoints-memory`
 - [ ] All five stream modules build and pass tests
-- [ ] Each stream module activates by classpath presence (adding as dep starts receiving events; removing stops without breaking other consumers)
-- [ ] Each stream module fires `Event<CloudEvent>.fireAsync()` with `type`, `source`, `subject`, `id`, `time`, `tenancyid` extension set correctly per the `tenancyid` source table
+- [ ] Each stream module activates by classpath presence
+- [ ] Each stream module fires `Event<CloudEvent>.fireAsync()` with all required fields set per the `tenancyid` source table
+- [ ] All three `EndpointRegistry.discover()` calls in stream modules (`streams-kafka`, `streams-poll`, `streams-camel`) use `TenancyConstants.DEFAULT_TENANT_ID` (not `PLATFORM_TENANT_ID`, not null)
 - [ ] `streams-kafka` channel name configurable via `casehub.streams.kafka.channel` (default `casehub-kafka-stream`)
 - [ ] `streams-kafka` does NOT observe `EndpointRegistered` — documented in Javadoc and pom `<description>`
-- [ ] `streams-poll` uses `TenancyConstants.PLATFORM_TENANT_ID` in `EndpointQuery` (not null)
+- [ ] `streams-amqp` does NOT observe `EndpointRegistered` — documented in Javadoc and pom `<description>` (same static-channel constraint as `streams-kafka`)
+- [ ] `streams-poll` catches per-endpoint HTTP exceptions, logs at WARN with URL, continues to next endpoint
 - [ ] `streams-camel` uses "discover at startup + idempotent post-startup handler" design (no buffering, no synchronized block)
 - [ ] `streams-camel` URI-change P0 constraint documented in Javadoc and pom `<description>`
 - [ ] `streams-camel` startup-window gap documented in Javadoc
-- [ ] `streams-webhook` REST endpoint returns 202 Accepted
-- [ ] `streams-webhook` PLATFORM_TENANT_ID URL path note documented in Javadoc
-- [ ] `streams-webhook` config `casehub.streams.webhook.public-url` required (fail-fast if absent)
+- [ ] `streams-webhook` dependencies: `quarkus-rest-jackson` + `cloudevents-json-jackson` (compile); P0 = structured format only (`application/cloudevents+json`); binary format deferred to P1+
+- [ ] `streams-webhook` returns 202 Accepted on success; 404 Not Found when `streamId` resolves to empty `Optional`; 400 Bad Request when `Content-Type` is not `application/cloudevents+json`
+- [ ] `streams-webhook` self-registration uses `TenancyConstants.PLATFORM_TENANT_ID` as `tenancyId` (platform-wide receiver, visible to all tenant queries)
+- [ ] `streams-webhook` P0 URL path note (PLATFORM_TENANT_ID = "platform", DEFAULT_TENANT_ID = UUID) documented in Javadoc
+- [ ] `streams-webhook` config `casehub.streams.webhook.public-url` required (fail-fast at startup if absent)
 - [ ] CAMEL/KAFKA mutual exclusion documented in `streams-camel` and `streams-kafka` pom `<description>`
-- [ ] CLAUDE.md module table updated for all five `streams-*/` modules
+
+**Documentation**
+- [ ] CLAUDE.md module table updated for all five `streams-*/` modules and `EndpointRegistered`/`STREAM_EVENT_TYPE` in the endpoints package description
 - [ ] ARC42STORIES.MD §4 layer taxonomy updated with L10: Stream Ingestion (`streams-kafka/`, `streams-amqp/`, `streams-webhook/`, `streams-poll/`, `streams-camel/`)
-- [ ] ARC42STORIES.MD §5 building block view updated with L10 container entries
-- [ ] `casehub-platform-api` `io.casehub.platform.api.endpoints` package documented in CLAUDE.md with `EndpointRegistered` and `STREAM_EVENT_TYPE`
+- [ ] ARC42STORIES.MD §5 building block view updated with: (a) L10 container entries for all five stream modules, (b) missing L4 `endpoints-config` container entry (present in §4 taxonomy but absent from §5 diagram)
 
 ---
 
@@ -388,6 +411,7 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 | Concern | Issue |
 |---------|-------|
 | `StreamContext` SPI — async tenancy propagation in processing chains that don't hold a `CloudEvent` reference | P1.8 — define SPI alongside the working propagation mechanism (Mutiny context or CDI scope backed by request-local storage); no standalone no-op SPI in P0 |
+| Multi-tenant stream discovery — all three stream `discover()` calls use `DEFAULT_TENANT_ID` in P0; in a multi-tenant deployment each tenant's endpoints land under their own tenancyId, which is never returned | P1+ — requires either `EndpointRegistry.discoverAll(...)` without tenant filter, or an injected tenant list that drives one `discover()` call per tenant |
 | Per-endpoint poll intervals | P1+ in poll module |
 | CloudEvent `subject` extraction from raw payload fields | P1+ |
 | Stream source credential lookup (`credentialRef` on EndpointDescriptor) | P1+ |
