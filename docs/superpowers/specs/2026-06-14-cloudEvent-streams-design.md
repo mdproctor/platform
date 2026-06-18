@@ -360,11 +360,30 @@ void poll() {
 }
 ```
 
-Per endpoint: HTTP GET to `EndpointPropertyKeys.URL`; map response body to CloudEvent `data`; set `STREAM_EVENT_TYPE` from descriptor; fire `Event<CloudEvent>.fireAsync()`.
+**`pollAndFire(descriptor)` implementation note:** `java.net.http.HttpClient.send()` throws `IOException` only for connection-level failures (DNS resolution, connection timeout, TCP errors, interrupted threads). A 4xx or 5xx HTTP response is a successful send — the method returns `HttpResponse<byte[]>` with `response.statusCode()` set to the error code; no exception is thrown. Without an explicit status code check, the error response body bytes would silently be treated as CloudEvent `data` and fired to observers. `pollAndFire()` must check the status code explicitly:
+
+```java
+void pollAndFire(EndpointDescriptor descriptor) throws IOException {
+    String url = descriptor.properties().get(EndpointPropertyKeys.URL);
+    HttpRequest request = HttpRequest.newBuilder().GET().uri(URI.create(url)).build();
+    HttpResponse<byte[]> response = httpClient.send(request, BodyHandlers.ofByteArray());
+    if (response.statusCode() < 200 || response.statusCode() >= 300) {
+        throw new IOException("Poll returned HTTP " + response.statusCode() + " for " + url);
+    }
+    // 2xx only: use response.body() as CloudEvent data
+    CloudEvent event = buildCloudEvent(response.body(), descriptor);
+    cloudEventBus.fireAsync(event)
+        .whenComplete((e, t) -> {
+            if (t != null) LOG.warnf(t, "CloudEvent observer failed for poll endpoint %s", url);
+        });
+}
+```
+
+The `IOException` from a non-2xx status is then caught by the per-endpoint `try/catch` in the poll loop, logged at WARN, and iteration continues to the next endpoint.
 
 **Tenancy scope for discovery:** `DEFAULT_TENANT_ID` is correct — `matchesTenancy` returns descriptors under `DEFAULT_TENANT_ID` (desiredstate-registered endpoints) and `PLATFORM_TENANT_ID` (platform-global endpoints). `EndpointQuery` requires non-null `tenancyId`: `Objects.requireNonNull(tenancyId)` confirmed in source. Multi-tenant poll scheduling (discovering per-tenant `HTTP + QUERY` endpoints independently) is P1+.
 
-**Per-endpoint failure handling:** Exceptions from HTTP GET (4xx, 5xx, connection timeout) are caught per-endpoint, logged at WARN with the failing URL, and execution continues to the next endpoint. Allowing exceptions to propagate would abort the entire `@Scheduled` invocation on the first bad endpoint, silencing all subsequent endpoints until the next interval.
+**Per-endpoint failure handling:** `pollAndFire()` throws `IOException` for both connection failures (thrown by `send()` directly) and non-2xx responses (thrown explicitly after status code check). Both are caught by the poll loop's per-endpoint `try/catch`, logged at WARN with the failing URL, and execution continues to the next endpoint. Allowing exceptions to propagate would abort the entire `@Scheduled` invocation on the first bad endpoint.
 
 **`tenancyid`:** `EndpointDescriptor.tenancyId()`.
 
@@ -508,7 +527,8 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 - [ ] `streams-amqp` does NOT observe `EndpointRegistered` — documented in Javadoc and pom `<description>` (same static-channel constraint as `streams-kafka`)
 - [ ] `streams-poll` dependencies: `quarkus-scheduler` only (no additional HTTP dep — uses `java.net.http.HttpClient` from Java 21 stdlib; `quarkus-rest-client-jackson` not used)
 - [ ] `streams-poll` uses `java.net.http.HttpClient.newHttpClient().send(request, BodyHandlers.ofByteArray())` for synchronous blocking GET (appropriate for `@Scheduled` context)
-- [ ] `streams-poll` catches per-endpoint HTTP exceptions, logs at WARN with URL, continues to next endpoint
+- [ ] `streams-poll` `pollAndFire()` explicitly checks `response.statusCode()` and throws `IOException` on non-2xx — `HttpClient.send()` does NOT throw for 4xx/5xx (those are successful sends returning `HttpResponse` with error status code); without this check the error body bytes would silently become CloudEvent data
+- [ ] `streams-poll` per-endpoint `try/catch` catches both connection `IOException` and the explicit non-2xx `IOException`, logs at WARN with URL, continues to next endpoint
 - [ ] `streams-camel` uses "discover at startup + idempotent post-startup handler" design (no buffering, no synchronized block)
 - [ ] `streams-camel` `addRoute()` wraps `CamelContext.addRoutes()` in `try/catch(Exception e)` and rethrows as `RuntimeException`; in `onStartup` this aborts startup and skips remaining descriptors in the forEach (fail-fast; bad URI prevents startup); in `onEndpointRegistered` it propagates through CDI async executor to the `fireAsync().whenComplete` WARN logger
 - [ ] `streams-camel` URI-change P0 constraint documented in Javadoc and pom `<description>`
