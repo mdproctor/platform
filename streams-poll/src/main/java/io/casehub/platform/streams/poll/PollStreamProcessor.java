@@ -70,6 +70,26 @@ public class PollStreamProcessor {
     }
 
     /**
+     * Package-private for direct unit testing of the HTTP fetch + status check logic.
+     *
+     * @throws IOException on connection failure, non-2xx status, or thread interruption
+     */
+    byte[] fetchBytes(String url) throws IOException {
+        HttpRequest request = HttpRequest.newBuilder().GET().uri(URI.create(url)).build();
+        HttpResponse<byte[]> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Poll interrupted for " + url, e);
+        }
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new IOException("Poll returned HTTP " + response.statusCode() + " for " + url);
+        }
+        return response.body();
+    }
+
+    /**
      * Package-private for direct unit testing.
      *
      * <p>HttpClient.send() throws IOException for connection errors and
@@ -78,19 +98,8 @@ public class PollStreamProcessor {
      */
     void pollAndFire(EndpointDescriptor descriptor) throws IOException {
         String url = descriptor.properties().get(EndpointPropertyKeys.URL);
-        HttpRequest request = HttpRequest.newBuilder().GET().uri(URI.create(url)).build();
-        HttpResponse<byte[]> response;
-        try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();                         // preserve interrupt flag
-            throw new IOException("Poll interrupted for " + url, e);  // caught by poll loop
-        }
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IOException("Poll returned HTTP " + response.statusCode() + " for " + url);
-        }
-
-        CloudEvent ce = buildCloudEvent(response.body(), descriptor);
+        byte[] body = fetchBytes(url);
+        CloudEvent ce = buildCloudEvent(body, descriptor);
         cloudEventBus.fireAsync(ce)
             .whenComplete((e, t) -> {
                 if (t != null) LOG.warnf(t, "CloudEvent observer failed for poll endpoint %s", url);

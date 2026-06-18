@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Set;
 
@@ -78,27 +79,39 @@ class PollStreamProcessorTest {
     }
 
     @Test
-    void pollAndFire_throws_IOException_on_non_2xx() {
+    void fetchBytes_returns_body_on_2xx() throws IOException {
         wireMock.stubFor(get(urlEqualTo("/data"))
-            .willReturn(aResponse().withStatus(503).withBody("Service Unavailable")));
+            .willReturn(aResponse().withStatus(200).withBody("{\"temp\":22}")));
 
         EndpointDescriptor desc = descriptor("http://localhost:" + wireMock.port() + "/data",
             "io.casehub.sensor.temperature");
 
-        assertThatThrownBy(() -> processor.pollAndFire(desc))
+        String url = desc.properties().get(EndpointPropertyKeys.URL);
+        byte[] body = processor.fetchBytes(url);
+
+        assertThat(new String(body, StandardCharsets.UTF_8)).isEqualTo("{\"temp\":22}");
+    }
+
+    @Test
+    void fetchBytes_throws_IOException_on_non_2xx() {
+        wireMock.stubFor(get(urlEqualTo("/data"))
+            .willReturn(aResponse().withStatus(503).withBody("Service Unavailable")));
+
+        String url = "http://localhost:" + wireMock.port() + "/data";
+
+        assertThatThrownBy(() -> processor.fetchBytes(url))
             .isInstanceOf(IOException.class)
             .hasMessageContaining("503");
     }
 
     @Test
-    void pollAndFire_throws_IOException_on_404() {
+    void fetchBytes_throws_IOException_on_404() {
         wireMock.stubFor(get(urlEqualTo("/data"))
             .willReturn(aResponse().withStatus(404)));
 
-        EndpointDescriptor desc = descriptor("http://localhost:" + wireMock.port() + "/data",
-            "io.casehub.sensor.temperature");
+        String url = "http://localhost:" + wireMock.port() + "/data";
 
-        assertThatThrownBy(() -> processor.pollAndFire(desc))
+        assertThatThrownBy(() -> processor.fetchBytes(url))
             .isInstanceOf(IOException.class)
             .hasMessageContaining("404");
     }

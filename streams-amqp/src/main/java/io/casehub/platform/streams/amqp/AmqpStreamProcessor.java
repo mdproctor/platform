@@ -9,7 +9,6 @@ import io.casehub.platform.api.endpoints.EndpointRegistry;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.cloudevents.CloudEvent;
 import io.cloudevents.core.builder.CloudEventBuilder;
-import io.quarkus.runtime.Startup;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.reactive.messaging.amqp.IncomingAmqpMetadata;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -46,7 +45,6 @@ import java.util.concurrent.CompletionStage;
  * {@code topics=a,b}). Each channel has exactly one address. For multi-queue fan-in
  * use {@code streams-camel}.
  */
-@Startup
 @ApplicationScoped
 public class AmqpStreamProcessor {
 

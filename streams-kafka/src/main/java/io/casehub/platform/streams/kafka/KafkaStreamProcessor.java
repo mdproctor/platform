@@ -9,7 +9,6 @@ import io.casehub.platform.api.endpoints.EndpointRegistry;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.cloudevents.CloudEvent;
 import io.cloudevents.core.builder.CloudEventBuilder;
-import io.quarkus.runtime.Startup;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.reactive.messaging.kafka.api.IncomingKafkaRecordMetadata;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -47,7 +46,6 @@ import java.util.concurrent.CompletionStage;
  * <p>CAMEL and KAFKA are mutually exclusive for the same topic — running both from the
  * same consumer group causes silent message loss (Kafka partition-splits between groups).
  */
-@Startup
 @ApplicationScoped
 public class KafkaStreamProcessor {
 
@@ -55,6 +53,17 @@ public class KafkaStreamProcessor {
     private static final String CHANNEL_NAME = "casehub-kafka-stream";
     private static final String UNREGISTERED_TYPE = "io.casehub.platform.streams.kafka.unregistered";
 
+    /**
+     * Used to compose the MicroProfile config key for the Kafka topic lookup:
+     * reads {@code mp.messaging.incoming.<channelName>.topic} (or {@code .topics}).
+     *
+     * <p><b>Note:</b> changing this value does NOT change the actual SmallRye Reactive
+     * Messaging channel name — {@code @Incoming} requires a compile-time constant and
+     * always binds to {@code "casehub-kafka-stream"}. This property only affects which
+     * MicroProfile config key is read in {@code onStartup()} for topic correlation.
+     * The channel name in {@code mp.messaging.incoming.*} must match
+     * {@code "casehub-kafka-stream"} regardless of this setting.
+     */
     @ConfigProperty(name = "casehub.streams.kafka.channel", defaultValue = "casehub-kafka-stream")
     String channelName;
 
