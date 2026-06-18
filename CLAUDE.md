@@ -121,6 +121,11 @@ mvn --batch-mode deploy -DskipTests   # CI only — requires GITHUB_TOKEN
 | `agent-api/` | `casehub-platform-agent-api` | AgentProvider SPI (`invoke()` single-shot + `openSession()` multi-turn) + AgentSession (multi-turn: serial query/interrupt/close) + AgentSessionInit (session config, no userPrompt) + AgentSessionConfig (single-shot config), AgentEvent, AgentMcpServer, typed exceptions (AgentProcessException, AgentSessionLimitException, AgentTimeoutException). Mutiny only — no Quarkus. Package: `io.casehub.platform.agent` |
 | `agent-claude/` | `casehub-platform-agent-claude` | `ClaudeAgentProvider @ApplicationScoped` + `ClaudeAgentClient @Startup` — activates by classpath presence, requires Claude CLI. Concurrent-session semaphore enforces `AgentSessionConfig.maxConcurrentSessions`. Single-shot: `run()` with per-invocation semaphore. Multi-turn: `openSession()` returns `ClaudeAgentSession` (IDLE/ACTIVE/CLOSED state machine, per-turn timeout, true-drain close). Package: `io.casehub.platform.agent.claude` |
 | `agent-claude-langchain4j/` | `casehub-platform-agent-claude-langchain4j` | `ChatModel` + `StreamingChatModel` adapters backed by `AgentSession`. Two paths: `ClaudeAgentChatModel` (`@Alternative @Priority(10) @ApplicationScoped` — fresh session per call, system prompt cached at Anthropic level) and `AgentSessionChatModel` (plain wrapper — caller-supplied session, multi-turn). Not compatible with `engine.Agent` (which forces `ResponseFormatType.JSON`). No quarkus:build goal. `listeners()` injects CDI `ChatModelListener` beans on `ClaudeAgentChatModel`; `AgentSessionChatModel` v1 gap. |
+| `streams-kafka/` | `casehub-platform-streams-kafka` | @Startup @ApplicationScoped static Kafka channel ingestion — @Incoming("casehub-kafka-stream"), always raw byte[], builds CloudEvent from STREAM_EVENT_TYPE. Does NOT observe EndpointRegistered. CAMEL and KAFKA are mutually exclusive for same topic. |
+| `streams-amqp/` | `casehub-platform-streams-amqp` | @Startup @ApplicationScoped static AMQP channel ingestion — single address per channel (no multi-address; for multi-queue fan-in use streams-camel). Does NOT observe EndpointRegistered. |
+| `streams-webhook/` | `casehub-platform-streams-webhook` | @Startup @ApplicationScoped JAX-RS receiver — POST /streams/webhook/{tenancyId}/{streamId}, structured CloudEvents HTTP binding (application/cloudevents+json), preserves incoming CloudEvent fields, enriches tenancyid from descriptor. Requires casehub.streams.webhook.public-url config. |
+| `streams-poll/` | `casehub-platform-streams-poll` | @Startup @ApplicationScoped @Scheduled HTTP GET poller — java.net.http.HttpClient field, explicit status code check (HttpClient.send() does not throw for 4xx/5xx), per-endpoint exception handling. |
+| `streams-camel/` | `casehub-platform-streams-camel` | @ApplicationScoped dynamic Camel route builder — @Observes StartupEvent discovers pre-startup CAMEL endpoints, @ObservesAsync EndpointRegistered for runtime additions (idempotent via routedUris set). P0: URI change requires restart. |
 
 ## Package Structure (platform-api)
 
@@ -145,11 +150,12 @@ io.casehub.platform.api
   .endpoints     — EndpointRegistry (SPI: register/resolve/discover/deregister by (Path, tenancyId)),
                    EndpointDescriptor (record: path, tenancyId, type, protocol, properties, credentialRef, capabilities),
                    EndpointPermissions (static: assertTenant(tenancyId, principal) — write-auth for runtime registration),
+                   EndpointRegistered (CDI event record: fired by EndpointRegistry on successful registration),
                    EndpointType (enum: SYSTEM/SERVICE/WORKER/AGENT),
-                   EndpointProtocol (enum: HTTP/GRPC/KAFKA/MCP/CAMEL/QHORUS),
+                   EndpointProtocol (enum: HTTP/GRPC/KAFKA/MCP/CAMEL/QHORUS/AMQP),
                    EndpointCapability (enum: SEND/RECEIVE/QUERY/DISPATCH),
                    EndpointQuery (record: tenancyId, type, protocol, requiredCapabilities),
-                   EndpointPropertyKeys (reserved cross-protocol property keys: URL, TOPIC)
+                   EndpointPropertyKeys (reserved cross-protocol property keys: URL, TOPIC, STREAM_EVENT_TYPE)
   .memory        — CaseMemoryStore (blocking SPI) + GraphCaseMemoryStore (graph-native extension: graphQuery(GraphMemoryQuery)),
                    ReactiveCaseMemoryStore (Mutiny SPI),
                    MemoryCapability (enum: declared adapter capabilities), MemoryCapabilityException,

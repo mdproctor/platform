@@ -139,6 +139,7 @@ See `../parent/docs/PLATFORM.md` Capability Ownership table for the full boundar
 | L7: Identity Extensions | `scim/`, `identity/` | SCIM group membership, DID/VC agent identity |
 | L8: Agent Infrastructure | `agent-api/`, `agent-claude/`, `agent-claude-langchain4j/` | AgentProvider SPI + Claude subprocess execution + LangChain4j ChatModel/StreamingChatModel bridge |
 | L9: Endpoint Registry Adapters | `endpoints-memory/` | EndpointRegistry adapter implementations (separate SPI from CaseMemoryStore — must not be conflated with L6) |
+| L10: Stream Ingestion | `streams-kafka/`, `streams-amqp/`, `streams-webhook/`, `streams-poll/`, `streams-camel/` | Classpath-activated transports each firing `Event<CloudEvent>.fireAsync()` |
 
 ### Journey and Chapter sequencing rationale
 
@@ -173,6 +174,7 @@ C4Container
     Container(config, "casehub-platform-config", "Quarkus", "YAML ConfigFilePreferenceProvider")
     Container(oidc, "casehub-platform-oidc", "Quarkus OIDC", "@RequestScoped OidcCurrentPrincipal")
     Container(expr, "casehub-platform-expression", "Quarkus", "JQEvaluator + SecretManager/ConfigManager mocks")
+    Container(endpointsConfig, "casehub-platform-endpoints-config", "Quarkus", "@Startup @ApplicationScoped YAML-backed EndpointDescriptor populator")
   }
   Container_Boundary(l5, "L5: Preference Persistence") {
     Container(jpaPrefs, "casehub-platform-persistence-jpa", "Hibernate + Flyway", "@ApplicationScoped JpaPreferenceProvider")
@@ -195,6 +197,13 @@ C4Container
   }
   Container_Boundary(l9, "L9: Endpoint Registry Adapters") {
     Container(endpointsMem, "casehub-platform-endpoints-memory", "Java", "@Alternative @Priority(100) InMemoryEndpointRegistry — volatile, tenant-filtered, ConcurrentHashMap")
+  }
+  Container_Boundary(l10, "L10: Stream Ingestion") {
+    Container(streamsKafka, "casehub-platform-streams-kafka", "SmallRye Reactive Messaging", "@Startup static Kafka @Incoming channel — raw byte[], builds CloudEvent")
+    Container(streamsAmqp, "casehub-platform-streams-amqp", "SmallRye Reactive Messaging", "@Startup static AMQP @Incoming channel — single address, raw byte[]")
+    Container(streamsWebhook, "casehub-platform-streams-webhook", "Quarkus REST", "@Startup JAX-RS POST /streams/webhook — structured CloudEvents HTTP binding")
+    Container(streamsPoll, "casehub-platform-streams-poll", "Quarkus Scheduler", "@Startup @Scheduled HTTP GET — java.net.http.HttpClient field, explicit status check")
+    Container(streamsCamel, "casehub-platform-streams-camel", "Apache Camel Quarkus", "@ApplicationScoped dynamic route builder via @ObservesAsync EndpointRegistered")
   }
 
   Rel(platform, api, "implements SPIs from")
