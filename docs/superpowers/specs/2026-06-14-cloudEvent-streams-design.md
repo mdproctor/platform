@@ -23,7 +23,7 @@
 
 `cloudevents-core:4.0.1` and `cloudevents-api:4.0.1` are added to `casehub-platform-parent`'s `<dependencyManagement>` as direct entries (not BOM imports). This overrides the Quarkus 3.32.2 BOM's `cloudevents-api:3.0.0` — confirmed necessary: the Quarkus 3.32.2 BOM manages only `cloudevents-api:3.0.0`, and `cloudevents-core:4.0.1` depends on `cloudevents-api:4.0.1`. Maven's direct-entry precedence over BOM imports handles the override correctly; position within `<dependencyManagement>` does not matter.
 
-`cloudevents-json-jackson:4.0.1` is also pinned — same CloudEvents SDK release, needed by `streams-kafka` for Kafka CloudEvents deserialization.
+`cloudevents-json-jackson:4.0.1` is also pinned — same CloudEvents SDK release, needed by `streams-webhook` for `JsonFormat`/`EventFormatProvider` (structured CloudEvents HTTP binding deserialization).
 
 Once `casehub-iot`, `casehub-qhorus`, or `casehub-connectors` implement their adapters, version management moves to `casehub-parent` BOM (parent#276) and the platform-parent entries are removed.
 
@@ -62,6 +62,8 @@ public static final String STREAM_EVENT_TYPE = "stream-event-type";
 ```
 
 **`EndpointPropertyKeys.TOPIC` Javadoc update**: Add `{@link EndpointProtocol#AMQP}` to the applies-to list. The constant applies to both KAFKA and AMQP. Remove "only" from the current text.
+
+**`EndpointPropertyKeys.URL` Javadoc update**: Add an explicit exclusion note: "KAFKA and AMQP are excluded — broker connection for both is Quarkus-managed via standard config (e.g. `kafka.bootstrap.servers`, `amqp-host`/`amqp-port`). Consistent with the TOPIC constant which says 'Applies to: KAFKA, AMQP only.'"
 
 **`EndpointProtocol.AMQP`** (new enum value, inserted after `KAFKA`, before `MCP`):
 
@@ -253,51 +255,56 @@ Broadly symmetric with `streams-kafka/`. Uses `quarkus-smallrye-reactive-messagi
 **REST endpoint:**
 
 ```java
-@POST
-@Path("/streams/webhook/{tenancyId}/{streamId}")
-@Consumes("application/cloudevents+json")
-@ApplicationScoped
-public Response receive(
-        byte[] body,
-        @PathParam("tenancyId") String tenancyIdFromPath,
-        @PathParam("streamId") String streamId) {
+@ApplicationScoped                     // class-level — @PostConstruct runs once; eventFormat shared
+@Path("/streams/webhook")
+public class WebhookResource {
 
-    CloudEvent incoming;
-    try {
-        incoming = eventFormat.deserialize(body);
-    } catch (RuntimeException e) {
-        return Response.status(400).entity("Invalid CloudEvent body: " + e.getMessage()).build();
+    @Inject Event<CloudEvent> cloudEventBus;
+    @Inject EndpointRegistry endpointRegistry;
+    private EventFormat eventFormat;
+
+    @PostConstruct
+    void init() {
+        eventFormat = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
+        if (eventFormat == null) throw new IllegalStateException(
+            "CloudEvents JSON format not registered — cloudevents-json-jackson missing from classpath");
     }
 
-    Optional<EndpointDescriptor> descriptor =
-        endpointRegistry.resolve(Path.of("streams", streamId), tenancyIdFromPath);
-    if (descriptor.isEmpty()) return Response.status(404).build();
+    @POST
+    @Path("/{tenancyId}/{streamId}")
+    @Consumes("application/cloudevents+json")
+    public Response receive(
+            byte[] body,
+            @PathParam("tenancyId") String tenancyIdFromPath,
+            @PathParam("streamId") String streamId) {
 
-    // Preserve all incoming fields; enrich with operator-set tenancyid
-    CloudEvent enriched = CloudEventBuilder.from(incoming)
-        .withExtension("tenancyid", descriptor.get().tenancyId())
-        .build();
-    cloudEventBus.fireAsync(enriched)
-        .whenComplete((e, t) -> {
-            if (t != null) LOG.warnf(t, "CloudEvent observer failed for stream %s", streamId);
-        });
-    return Response.accepted().build();
+        CloudEvent incoming;
+        try {
+            incoming = eventFormat.deserialize(body);
+        } catch (RuntimeException e) {
+            return Response.status(400).entity("Invalid CloudEvent body: " + e.getMessage()).build();
+        }
+
+        Optional<EndpointDescriptor> descriptor =
+            endpointRegistry.resolve(Path.of("streams", streamId), tenancyIdFromPath);
+        if (descriptor.isEmpty()) return Response.status(404).build();
+
+        // Preserve all incoming fields; enrich with operator-set tenancyid
+        CloudEvent enriched = CloudEventBuilder.from(incoming)
+            .withExtension("tenancyid", descriptor.get().tenancyId())
+            .build();
+        cloudEventBus.fireAsync(enriched)
+            .whenComplete((e, t) -> {
+                if (t != null) LOG.warnf(t, "CloudEvent observer failed for stream %s", streamId);
+            });
+        return Response.accepted().build();
+    }
 }
 ```
 
 `CloudEventBuilder.from(incoming)` copies all fields (type, id, source, time, subject, data, specversion, extensions) from the incoming event. `.withExtension("tenancyid", ...)` sets or replaces the tenancyid extension with the operator-authoritative value from the descriptor. Any caller-supplied `tenancyid` extension in the incoming event is overwritten — the descriptor is the authority.
 
-`eventFormat` is resolved at `@PostConstruct`:
-```java
-@PostConstruct
-void init() {
-    eventFormat = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
-    if (eventFormat == null) throw new IllegalStateException(
-        "CloudEvents JSON format not registered — cloudevents-json-jackson missing from classpath");
-}
-```
-
-`EventFormatProvider.getInstance()` uses ServiceLoader; `cloudevents-json-jackson` registers `JsonFormat` under `META-INF/services/io.cloudevents.core.format.EventFormat`. The null guard fails fast at startup (not at first request) on a misconfigured classpath.
+`EventFormatProvider.getInstance()` uses ServiceLoader; `cloudevents-json-jackson` registers `JsonFormat` under `META-INF/services/io.cloudevents.core.format.EventFormat`. The null guard in `init()` fails fast at startup (not at first request) on a misconfigured classpath.
 
 Responses:
 - **202 Accepted** on success (`fireAsync()` is fire-and-forget; 200 would imply synchronous completion)
@@ -323,7 +330,7 @@ URL = casehub.streams.webhook.public-url config (required, no default — fail f
 
 ### `streams-poll/`
 
-**Dependencies:** `quarkus-rest-client-jackson`, `quarkus-scheduler`.
+**Dependencies:** `quarkus-scheduler` only. No additional HTTP client dependency — use `java.net.http.HttpClient` (built into Java 11+, available on Java 21). The poll module issues HTTP GETs to arbitrary dynamic URLs stored in `EndpointDescriptor.properties().get(URL)` — a different URL per endpoint, discovered at runtime. MicroProfile REST Client (`quarkus-rest-client-jackson`) requires typed interfaces with a fixed base URL declared at configuration time and would require a new client instance per URL per poll cycle — over-engineered for a simple GET. `HttpClient.newHttpClient().send(request, BodyHandlers.ofByteArray())` is synchronous and appropriate for the blocking `@Scheduled` context.
 
 **Poll loop:**
 
@@ -421,7 +428,7 @@ void addRoute(EndpointDescriptor d) {
 ```
 
 **Exception propagation by call site:**
-- In `onStartup` (synchronous `@Observes StartupEvent`): `RuntimeException` propagates out of the observer, causing `camelStarted.set(true)` never to be reached and Quarkus to abort startup with a clear error. Fail-fast is correct — a bad Camel URI in `endpoints-config` should prevent the application from starting.
+- In `onStartup` (synchronous `@Observes StartupEvent`): `RuntimeException` propagates out of `forEach`, aborting iteration. Remaining discovered descriptors in the stream are not processed — any CAMEL endpoints after the bad one get no routes. `camelStarted.set(true)` is never reached. Quarkus aborts startup with a clear error. Fail-fast is correct — a bad Camel URI in `endpoints-config` should prevent the application from starting, not silently skip the broken route.
 - In `onEndpointRegistered` (async `@ObservesAsync`): `RuntimeException` propagates to the CDI async executor, which wraps it in `CompletionException` and completes the `CompletionStage` returned by `fireAsync()` exceptionally. The `whenComplete` in `InMemoryEndpointRegistry.register()` catches and WARN-logs it.
 
 Routes added to a running Quarkus Camel context via `addRoutes()` start automatically in Quarkus Camel 3.x.
@@ -438,7 +445,7 @@ Routes added to a running Quarkus Camel context via `addRoutes()` start automati
 
 GE-20260513-b15933: `@ObservesAsync` CDI events are silently not delivered in `@QuarkusTest`. Each stream module test must NOT rely on CDI observation to verify `CloudEvent` firing.
 
-Required pattern: extract the CloudEvent construction logic into a package-private method on the processor bean, test that method directly, verify the constructed `CloudEvent` fields without going through `fireAsync()`. For integration-level verification that `fireAsync()` is invoked: use an `@ApplicationScoped` capture bean with a `CountDownLatch`; the test calls the capture bean's method directly (not via CDI observation).
+Required pattern: extract the CloudEvent construction logic into a package-private method on the processor bean, test that method directly, and verify the constructed `CloudEvent` fields without going through `fireAsync()`. This is the only reliably verifiable approach — CDI async delivery cannot be tested at the unit level.
 
 ### Per-module test approach
 
@@ -467,6 +474,7 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 - [ ] `EndpointRegistry` interface Javadoc states the `EndpointRegistered` firing obligation for non-no-op implementations
 - [ ] `EndpointPropertyKeys.STREAM_EVENT_TYPE` constant added with full Javadoc
 - [ ] `EndpointPropertyKeys.TOPIC` Javadoc updated to include `EndpointProtocol#AMQP` in the applies-to list (remove "only")
+- [ ] `EndpointPropertyKeys.URL` Javadoc updated to add explicit exclusion: "KAFKA and AMQP are excluded — broker connection for both is Quarkus-managed via standard config"
 - [ ] `EndpointProtocol.AMQP` enum value added after `KAFKA`, before `MCP`, with `{@link EndpointPropertyKeys#TOPIC}` link form
 
 **endpoints-memory changes**
@@ -488,12 +496,15 @@ Required pattern: extract the CloudEvent construction logic into a package-priva
 - [ ] All five stream processor beans are `@ApplicationScoped` — required for shared startup state and observer callbacks; `@Dependent` (CDI default without explicit scope) would create per-invocation instances breaking the startup design
 - [ ] `streams-kafka` does NOT observe `EndpointRegistered` — documented in Javadoc and pom `<description>`
 - [ ] `streams-amqp` does NOT observe `EndpointRegistered` — documented in Javadoc and pom `<description>` (same static-channel constraint as `streams-kafka`)
+- [ ] `streams-poll` dependencies: `quarkus-scheduler` only (no additional HTTP dep — uses `java.net.http.HttpClient` from Java 21 stdlib; `quarkus-rest-client-jackson` not used)
+- [ ] `streams-poll` uses `java.net.http.HttpClient.newHttpClient().send(request, BodyHandlers.ofByteArray())` for synchronous blocking GET (appropriate for `@Scheduled` context)
 - [ ] `streams-poll` catches per-endpoint HTTP exceptions, logs at WARN with URL, continues to next endpoint
 - [ ] `streams-camel` uses "discover at startup + idempotent post-startup handler" design (no buffering, no synchronized block)
-- [ ] `streams-camel` `addRoute()` wraps `CamelContext.addRoutes()` in `try/catch(Exception e)` and rethrows as `RuntimeException`; in `onStartup` this aborts startup (fail-fast); in `onEndpointRegistered` it propagates through CDI async executor to the `fireAsync().whenComplete` WARN logger
+- [ ] `streams-camel` `addRoute()` wraps `CamelContext.addRoutes()` in `try/catch(Exception e)` and rethrows as `RuntimeException`; in `onStartup` this aborts startup and skips remaining descriptors in the forEach (fail-fast; bad URI prevents startup); in `onEndpointRegistered` it propagates through CDI async executor to the `fireAsync().whenComplete` WARN logger
 - [ ] `streams-camel` URI-change P0 constraint documented in Javadoc and pom `<description>`
 - [ ] `streams-camel` startup-window gap documented in Javadoc
 - [ ] `streams-webhook` dependencies: `quarkus-rest-jackson` + `cloudevents-json-jackson` (compile); P0 = structured format only (`application/cloudevents+json`); binary format deferred to P1+
+- [ ] `streams-webhook` JAX-RS resource class is `@ApplicationScoped` (not method-level; `@PostConstruct`-initialised `eventFormat` must be shared across requests)
 - [ ] `streams-webhook` accepts `byte[]`, deserializes via `EventFormatProvider`; `@Consumes("application/cloudevents+json")` enforced; no JAX-RS auto-binding to `CloudEvent` type
 - [ ] `streams-webhook` resolves `EventFormat` at `@PostConstruct`; throws `IllegalStateException` if null (fail-fast on classpath misconfiguration)
 - [ ] `streams-webhook` preserves incoming CloudEvent fields (type, id, source, time, subject, data, specversion, extensions) and sets/replaces only `tenancyid` from descriptor; does NOT override type with `STREAM_EVENT_TYPE`
