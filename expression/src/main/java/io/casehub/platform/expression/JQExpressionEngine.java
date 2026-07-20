@@ -50,10 +50,15 @@ public class JQExpressionEngine implements ExpressionEngine {
 
         var key = new CacheKey(expression, contextType, resultType);
         return (CompiledExpression<C, R>) expressionCache.computeIfAbsent(key, k -> {
-            JsonQuery query = compileQuery(expression);
-            CompiledExpression<JsonNode, ?> jqExpr = (resultType == Boolean.class)
-                                                     ? new BooleanJQExpression(query, rootScope)
-                                                     : new ListJQExpression(query, rootScope);
+            JsonQuery                       query = compileQuery(expression);
+            CompiledExpression<JsonNode, ?> jqExpr;
+            if (resultType == Boolean.class) {
+                jqExpr = new BooleanJQExpression(query, rootScope);
+            } else if (resultType == List.class) {
+                jqExpr = new ListJQExpression(query, rootScope);
+            } else {
+                jqExpr = new ScalarJQExpression<>(query, rootScope, resultType, MAPPER);
+            }
 
             if (contextType == JsonNode.class) {
                 return jqExpr;
@@ -115,6 +120,33 @@ public class JQExpressionEngine implements ExpressionEngine {
                 List<JsonNode> out        = new ArrayList<>();
                 query.apply(childScope, context, out::add);
                 return out;
+            } catch (Exception e) {
+                throw new ExpressionEvaluationException(
+                        "JQ evaluation failed", e);
+            }
+        }
+    }
+
+    private record ScalarJQExpression<R>(JsonQuery query, Scope rootScope,
+                                         Class<R> resultType, ObjectMapper mapper)
+            implements CompiledExpression<JsonNode, R> {
+
+        @Override
+        public String type() {return "jq";}
+
+        @Override
+        public R eval(JsonNode context) {
+            try {
+                Scope          childScope = Scope.newChildScope(rootScope);
+                List<JsonNode> out        = new ArrayList<>();
+                query.apply(childScope, context, out::add);
+                if (out.isEmpty()) {return null;}
+                JsonNode first = out.getFirst();
+                if (first.isNull()) {return null;}
+                if (resultType == String.class) {
+                    return resultType.cast(first.asText());
+                }
+                return mapper.convertValue(first, resultType);
             } catch (Exception e) {
                 throw new ExpressionEvaluationException(
                         "JQ evaluation failed", e);

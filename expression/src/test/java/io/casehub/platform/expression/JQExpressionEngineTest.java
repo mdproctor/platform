@@ -140,4 +140,59 @@ class JQExpressionEngineTest {
         assertThat(expr.eval(input)).isTrue();
     }
 
+
+    @Test
+    void compile_stringResult() {
+        ObjectNode input = MAPPER.createObjectNode().put("name", "alice");
+        CompiledExpression<JsonNode, String> expr =
+                engine.compile(".name", JsonNode.class, String.class);
+        assertThat(expr.eval(input)).isEqualTo("alice");
+    }
+
+    @Test
+    void compile_integerResult() {
+        ObjectNode input = MAPPER.createObjectNode().put("count", 42);
+        CompiledExpression<JsonNode, Integer> expr =
+                engine.compile(".count", JsonNode.class, Integer.class);
+        assertThat(expr.eval(input)).isEqualTo(42);
+    }
+
+    @Test
+    void compile_stringResult_nullField_returnsNull() {
+        ObjectNode input = MAPPER.createObjectNode();
+        input.putNull("name");
+        CompiledExpression<JsonNode, String> expr =
+                engine.compile(".name", JsonNode.class, String.class);
+        assertThat(expr.eval(input)).isNull();
+    }
+
+    @Test
+    void compile_stringResult_missingField_returnsNull() {
+        ObjectNode input = MAPPER.createObjectNode().put("other", "value");
+        CompiledExpression<JsonNode, String> expr =
+                engine.compile(".name", JsonNode.class, String.class);
+        assertThat(expr.eval(input)).isNull();
+    }
+
+    @Test
+    void compile_mapContext_stringResult() {
+        var expr    = engine.compile(".name", Map.class, String.class);
+        var context = new java.util.HashMap<String, Object>();
+        context.put("name", "alice");
+        assertThat(expr.eval(context)).isEqualTo("alice");
+    }
+
+    @Test
+    void compile_scalarResult_cachedForSameExpression() {
+        CompiledExpression<?, ?> first  = engine.compile(".name", JsonNode.class, String.class);
+        CompiledExpression<?, ?> second = engine.compile(".name", JsonNode.class, String.class);
+        assertThat(first).isSameAs(second);
+    }
+
+    @Test
+    void compile_differentResultTypes_produceDifferentInstances() {
+        CompiledExpression<?, ?> stringExpr = engine.compile(".value", JsonNode.class, String.class);
+        CompiledExpression<?, ?> intExpr    = engine.compile(".value", JsonNode.class, Integer.class);
+        assertThat(stringExpr).isNotSameAs(intExpr);
+    }
 }
