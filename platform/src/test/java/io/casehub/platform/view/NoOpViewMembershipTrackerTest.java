@@ -32,4 +32,14 @@ class NoOpViewMembershipTrackerTest {
         assertThat(tracker.getLastKnownMembership(
                 Set.of(UUID.randomUUID(), UUID.randomUUID()))).isEmpty();
     }
+
+    @Test
+    void getSubjectsByViewReturnsEmpty() {
+        assertThat(tracker.getSubjectsByView(UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
+    void removeMembershipByViewDoesNotThrow() {
+        tracker.removeMembershipByView(UUID.randomUUID());
+    }
 }

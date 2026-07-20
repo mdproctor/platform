@@ -4,6 +4,7 @@ import io.casehub.platform.api.path.Path;
 import io.casehub.platform.api.view.SubjectViewEvent;
 import io.casehub.platform.api.view.SubjectViewSpec;
 import io.casehub.platform.api.view.SubjectViewStore;
+import io.casehub.platform.api.view.ViewEventType;
 import io.casehub.platform.api.view.ViewMembershipTracker;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -98,11 +99,21 @@ public class SubjectViewOrchestrator {
         return saved;
     }
 
-    public boolean deleteView(UUID viewId) {
-        var     spec    = viewStore.findById(viewId);
-        boolean deleted = viewStore.delete(viewId);
-        spec.ifPresent(s -> invalidateViewCache(s.tenancyId()));
-        return deleted;
+    public List<SubjectViewEvent> deleteView(UUID viewId) {
+        var spec = viewStore.findById(viewId);
+        if (spec.isEmpty()) {return List.of();}
+        var s = spec.get();
+
+        Set<UUID> members = tracker.getSubjectsByView(viewId);
+        List<SubjectViewEvent> events = members.stream()
+                                               .map(subjectId -> new SubjectViewEvent(
+                                                       subjectId, viewId, s.name(), ViewEventType.REMOVED, s.tenancyId()))
+                                               .toList();
+
+        viewStore.delete(viewId);
+        invalidateViewCache(s.tenancyId());
+        tracker.removeMembershipByView(viewId);
+        return events;
     }
 
     private List<SubjectViewSpec> getViews(String tenancyId) {

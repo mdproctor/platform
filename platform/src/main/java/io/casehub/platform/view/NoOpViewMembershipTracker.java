@@ -30,4 +30,14 @@ public class NoOpViewMembershipTracker implements ViewMembershipTracker {
     @Override
     public void removeMembership(UUID subjectId) {
     }
+
+    @Override
+    public Set<UUID> getSubjectsByView(UUID viewId) {
+        return Set.of();
+    }
+
+    @Override
+    public void removeMembershipByView(UUID viewId) {
+    }
+
 }

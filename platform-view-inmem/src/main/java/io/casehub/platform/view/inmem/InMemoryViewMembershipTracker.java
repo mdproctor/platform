@@ -46,4 +46,31 @@ public class InMemoryViewMembershipTracker implements ViewMembershipTracker {
     public void removeMembership(UUID subjectId) {
         state.remove(subjectId);
     }
+
+    @Override
+    public Set<UUID> getSubjectsByView(UUID viewId) {
+        Set<UUID> result = new java.util.HashSet<>();
+        state.forEach((subjectId, membership) -> {
+            if (membership.containsKey(viewId)) {
+                result.add(subjectId);
+            }
+        });
+        return result;
+    }
+
+    @Override
+    public void removeMembershipByView(UUID viewId) {
+        state.forEach((subjectId, membership) -> {
+            if (membership.containsKey(viewId)) {
+                Map<UUID, String> updated = new java.util.HashMap<>(membership);
+                updated.remove(viewId);
+                if (updated.isEmpty()) {
+                    state.remove(subjectId);
+                } else {
+                    state.replace(subjectId, Map.copyOf(updated));
+                }
+            }
+        });
+    }
+
 }

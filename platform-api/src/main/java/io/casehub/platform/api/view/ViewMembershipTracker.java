@@ -21,4 +21,9 @@ public interface ViewMembershipTracker {
 
     void updateMembership(UUID subjectId, Map<UUID, String> viewIdToName);
     void removeMembership(UUID subjectId);
+
+    Set<UUID> getSubjectsByView(UUID viewId);
+
+    void removeMembershipByView(UUID viewId);
+
 }

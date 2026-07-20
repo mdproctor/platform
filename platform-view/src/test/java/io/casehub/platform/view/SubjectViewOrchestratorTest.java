@@ -112,15 +112,84 @@ class SubjectViewOrchestratorTest {
     @Test
     void deleteView_removesFromStore() {
         var saved = orchestrator.saveView(new SubjectViewSpec(null, "test", "t1",
-            "iot/**", null, null, null, null, null));
-        orchestrator.deleteView(saved.id());
+                                                              "iot/**", null, null, null, null, null));
+        var events = orchestrator.deleteView(saved.id());
         assertThat(viewStore.findById(saved.id())).isEmpty();
+        assertThat(events).isEmpty();
     }
 
     @Test
     void deleteView_nonExistentIsNoOp() {
-        orchestrator.deleteView(UUID.randomUUID());
+        var events = orchestrator.deleteView(UUID.randomUUID());
+        assertThat(events).isEmpty();
     }
+
+    @Test
+    void deleteView_returnsRemovedEventsForMembers() {
+        var saved = orchestrator.saveView(new SubjectViewSpec(null, "Test View", "t1",
+                                                              "iot/**", null, null, null, null, null));
+        var s1 = UUID.randomUUID();
+        var s2 = UUID.randomUUID();
+        tracker.updateMembership(s1, Map.of(saved.id(), "Test View"));
+        tracker.updateMembership(s2, Map.of(saved.id(), "Test View"));
+
+        var events = orchestrator.deleteView(saved.id());
+
+        assertThat(events).hasSize(2);
+        assertThat(events).allMatch(e -> e.type() == ViewEventType.REMOVED);
+        assertThat(events).allMatch(e -> e.viewId().equals(saved.id()));
+        assertThat(events).allMatch(e -> e.viewName().equals("Test View"));
+        assertThat(events).allMatch(e -> e.tenancyId().equals("t1"));
+        assertThat(events.stream().map(SubjectViewEvent::subjectId)
+                         .collect(java.util.stream.Collectors.toSet()))
+                .containsExactlyInAnyOrder(s1, s2);
+    }
+
+    @Test
+    void deleteView_removesMembershipRecords() {
+        var saved = orchestrator.saveView(new SubjectViewSpec(null, "Test View", "t1",
+                                                              "iot/**", null, null, null, null, null));
+        var subject = UUID.randomUUID();
+        tracker.updateMembership(subject, Map.of(saved.id(), "Test View"));
+
+        orchestrator.deleteView(saved.id());
+
+        assertThat(tracker.getLastKnownMembership(subject)).isEmpty();
+    }
+
+    @Test
+    void deleteView_invalidatesViewCache() {
+        orchestrator.cacheTtlSeconds = 60;
+        var saved = orchestrator.saveView(new SubjectViewSpec(null, "cached-view", "t1",
+                                                              "iot/**", null, null, null, null, null));
+        var s = UUID.randomUUID();
+        orchestrator.evaluateAndTrack(s, "t1", Set.of("iot/x"));
+
+        orchestrator.deleteView(saved.id());
+
+        var newView = orchestrator.saveView(new SubjectViewSpec(null, "new-view", "t1",
+                                                                "iot/**", null, null, null, null, null));
+        var events = orchestrator.evaluateAndTrack(s, "t1", Set.of("iot/x"));
+
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0).type()).isEqualTo(ViewEventType.ADDED);
+        assertThat(events.get(0).viewId()).isEqualTo(newView.id());
+    }
+
+    @Test
+    void deleteView_eventsCarryCorrectViewNameAndTenancyId() {
+        var saved = orchestrator.saveView(new SubjectViewSpec(null, "Named View", "tenant-42",
+                                                              "iot/**", null, null, null, null, null));
+        var subject = UUID.randomUUID();
+        tracker.updateMembership(subject, Map.of(saved.id(), "Named View"));
+
+        var events = orchestrator.deleteView(saved.id());
+
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0).viewName()).isEqualTo("Named View");
+        assertThat(events.get(0).tenancyId()).isEqualTo("tenant-42");
+    }
+
 
     @Test
     void caching_viewsCachedWhenTtlPositive() {
@@ -230,5 +299,35 @@ class SubjectViewOrchestratorTest {
 
         @Override
         public void removeMembership(UUID subjectId) { state.remove(subjectId); }
+
+        @Override
+        public Set<UUID> getSubjectsByView(UUID viewId) {
+            Set<UUID> result = new java.util.HashSet<>();
+            state.forEach((subjectId, membership) -> {
+                if (membership.containsKey(viewId)) {
+                    result.add(subjectId);
+                }
+            });
+            return result;
+        }
+
+        @Override
+        public void removeMembershipByView(UUID viewId) {
+            List<UUID> toUpdate = state.entrySet().stream()
+                                       .filter(e -> e.getValue().containsKey(viewId))
+                                       .map(Map.Entry::getKey)
+                                       .toList();
+            for (UUID subjectId : toUpdate) {
+                Map<UUID, String> membership = state.get(subjectId);
+                Map<UUID, String> updated    = new java.util.HashMap<>(membership);
+                updated.remove(viewId);
+                if (updated.isEmpty()) {
+                    state.remove(subjectId);
+                } else {
+                    state.put(subjectId, Map.copyOf(updated));
+                }
+            }
+        }
+
     }
 }

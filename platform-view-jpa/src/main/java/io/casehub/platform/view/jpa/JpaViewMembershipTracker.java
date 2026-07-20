@@ -70,4 +70,22 @@ public class JpaViewMembershipTracker implements ViewMembershipTracker {
           .setParameter("sid", subjectId)
           .executeUpdate();
     }
+
+    @Override
+    public Set<UUID> getSubjectsByView(UUID viewId) {
+        return new java.util.HashSet<>(em.createQuery(
+                                                 "SELECT DISTINCT e.subjectId FROM ViewMembershipEntity e WHERE e.viewId = :vid",
+                                                 UUID.class)
+                                         .setParameter("vid", viewId)
+                                         .getResultList());
+    }
+
+    @Override
+    @Transactional
+    public void removeMembershipByView(UUID viewId) {
+        em.createQuery("DELETE FROM ViewMembershipEntity e WHERE e.viewId = :vid")
+          .setParameter("vid", viewId)
+          .executeUpdate();
+    }
+
 }

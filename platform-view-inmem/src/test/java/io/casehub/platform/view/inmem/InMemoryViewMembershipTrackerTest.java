@@ -85,4 +85,65 @@ class InMemoryViewMembershipTrackerTest {
     void bulkGetEmptySetReturnsEmpty() {
         assertThat(tracker.getLastKnownMembership(Set.of())).isEmpty();
     }
+
+    @Test
+    void getSubjectsByView_returnsMatchingSubjects() {
+        var s1 = UUID.randomUUID();
+        var s2 = UUID.randomUUID();
+        var s3 = UUID.randomUUID();
+        var v1 = UUID.randomUUID();
+        var v2 = UUID.randomUUID();
+        tracker.updateMembership(s1, Map.of(v1, "View A", v2, "View B"));
+        tracker.updateMembership(s2, Map.of(v1, "View A"));
+        tracker.updateMembership(s3, Map.of(v2, "View B"));
+
+        assertThat(tracker.getSubjectsByView(v1)).containsExactlyInAnyOrder(s1, s2);
+    }
+
+    @Test
+    void getSubjectsByView_unknownView_returnsEmpty() {
+        tracker.updateMembership(UUID.randomUUID(), Map.of(UUID.randomUUID(), "v"));
+        assertThat(tracker.getSubjectsByView(UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
+    void removeMembershipByView_removesAllRecordsForView() {
+        var s1 = UUID.randomUUID();
+        var s2 = UUID.randomUUID();
+        var v1 = UUID.randomUUID();
+        var v2 = UUID.randomUUID();
+        tracker.updateMembership(s1, Map.of(v1, "View A", v2, "View B"));
+        tracker.updateMembership(s2, Map.of(v1, "View A"));
+
+        tracker.removeMembershipByView(v1);
+
+        assertThat(tracker.getLastKnownMembership(s1))
+                .containsExactlyEntriesOf(Map.of(v2, "View B"));
+        assertThat(tracker.getLastKnownMembership(s2)).isEmpty();
+    }
+
+    @Test
+    void removeMembershipByView_unknownView_isNoOp() {
+        var subject = UUID.randomUUID();
+        var view    = UUID.randomUUID();
+        tracker.updateMembership(subject, Map.of(view, "View A"));
+
+        tracker.removeMembershipByView(UUID.randomUUID());
+
+        assertThat(tracker.getLastKnownMembership(subject))
+                .containsExactlyEntriesOf(Map.of(view, "View A"));
+    }
+
+    @Test
+    void removeMembershipByView_leavesOtherViewsIntact() {
+        var subject = UUID.randomUUID();
+        var v1      = UUID.randomUUID();
+        var v2      = UUID.randomUUID();
+        tracker.updateMembership(subject, Map.of(v1, "View A", v2, "View B"));
+
+        tracker.removeMembershipByView(v1);
+
+        assertThat(tracker.getLastKnownMembership(subject))
+                .containsExactlyEntriesOf(Map.of(v2, "View B"));
+    }
 }

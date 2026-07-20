@@ -19,3 +19,4 @@ CREATE TABLE view_membership (
 );
 
 CREATE INDEX idx_view_membership_subject ON view_membership (subject_id);
+CREATE INDEX idx_view_membership_view ON view_membership (view_id);
