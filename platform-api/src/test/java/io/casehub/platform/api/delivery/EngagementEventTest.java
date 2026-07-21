@@ -12,40 +12,43 @@ class EngagementEventTest {
     @Test
     void rejectsNullId() {
         assertThatNullPointerException().isThrownBy(() ->
-                new EngagementEvent(null, "attempt-1", "notif-1", "email", "user-1", "tenant-1",
-                        EngagementType.OPENED, Instant.now(), null));
+                                                            new EngagementEvent(null, "attempt-1", "notif-1", DeliverySourceType.NOTIFICATION,
+                                                                                "email", "user-1", "tenant-1", EngagementType.OPENED, Instant.now(), null));
     }
 
     @Test
-    void rejectsNullAttemptId() {
+    void rejectsNullSourceType() {
         assertThatNullPointerException().isThrownBy(() ->
-                new EngagementEvent("id-1", null, "notif-1", "email", "user-1", "tenant-1",
-                        EngagementType.OPENED, Instant.now(), null));
+                                                            new EngagementEvent("id-1", "attempt-1", "notif-1", null,
+                                                                                "email", "user-1", "tenant-1", EngagementType.OPENED, Instant.now(), null));
     }
 
     @Test
     void rejectsNullType() {
         assertThatNullPointerException().isThrownBy(() ->
-                new EngagementEvent("id-1", "attempt-1", "notif-1", "email", "user-1", "tenant-1",
-                        null, Instant.now(), null));
+                                                            new EngagementEvent("id-1", "attempt-1", "notif-1", DeliverySourceType.NOTIFICATION,
+                                                                                "email", "user-1", "tenant-1", null, Instant.now(), null));
     }
 
     @Test
     void acceptsNullableFields() {
-        var event = new EngagementEvent("id-1", "attempt-1", null, "email", "user-1", "tenant-1",
-                EngagementType.CLICKED, Instant.now(), null);
-        assertThat(event.notificationId()).isNull();
+        var event = new EngagementEvent("id-1", null, null, DeliverySourceType.NOTIFICATION,
+                                        "email", "user-1", "tenant-1", EngagementType.CLICKED, Instant.now(), null);
+        assertThat(event.attemptId()).isNull();
+        assertThat(event.sourceId()).isNull();
         assertThat(event.metadata()).isNull();
     }
 
     @Test
     void allFieldsRoundTrip() {
         var now = Instant.now();
-        var event = new EngagementEvent("id-1", "attempt-1", "notif-1", "email", "user-1", "tenant-1",
-                EngagementType.OPENED, now, "{\"url\":\"https://example.com\"}");
+        var event = new EngagementEvent("id-1", "attempt-1", "notif-1", DeliverySourceType.NOTIFICATION,
+                                        "email", "user-1", "tenant-1", EngagementType.OPENED, now,
+                                        "{\"url\":\"https://example.com\"}");
         assertThat(event.id()).isEqualTo("id-1");
         assertThat(event.attemptId()).isEqualTo("attempt-1");
-        assertThat(event.notificationId()).isEqualTo("notif-1");
+        assertThat(event.sourceId()).isEqualTo("notif-1");
+        assertThat(event.sourceType()).isEqualTo(DeliverySourceType.NOTIFICATION);
         assertThat(event.channelId()).isEqualTo("email");
         assertThat(event.type()).isEqualTo(EngagementType.OPENED);
         assertThat(event.recordedAt()).isEqualTo(now);

@@ -1,6 +1,7 @@
 package io.casehub.platform.notification.dispatch;
 
 import io.casehub.platform.api.delivery.DeliveryResult;
+import io.casehub.platform.api.delivery.DeliverySourceType;
 import io.casehub.platform.api.delivery.DigestBuffer;
 import io.casehub.platform.api.delivery.DigestBufferKey;
 import io.casehub.platform.api.notification.NotificationInput;
@@ -159,12 +160,13 @@ public class NotificationDispatcher {
                 final DeliveryResult result = channel.deliverer().deliver(notificationInput);
                 if (result.success()) {
                     deliveryTracker.recordSuccess(
-                            channel.channelId(), notificationInput, null);
+                            channel.channelId(), notificationInput, null, DeliverySourceType.NOTIFICATION);
                 } else {
                     LOG.warnf("Delivery failed for channel '%s', user '%s': %s",
                             channel.channelId(), userId, result.failureReason());
                     deliveryTracker.recordFailure(
                             channel.channelId(), notificationInput, null,
+                            DeliverySourceType.NOTIFICATION,
                             channel.guaranteedMinSeverity(), result.failureReason());
                 }
             } catch (Exception e) {
@@ -172,6 +174,7 @@ public class NotificationDispatcher {
                         channel.channelId(), userId);
                 deliveryTracker.recordFailure(
                         channel.channelId(), notificationInput, null,
+                        DeliverySourceType.NOTIFICATION,
                         channel.guaranteedMinSeverity(), e.getMessage());
             }
         }

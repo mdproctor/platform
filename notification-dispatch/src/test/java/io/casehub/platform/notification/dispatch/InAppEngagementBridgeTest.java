@@ -2,6 +2,7 @@ package io.casehub.platform.notification.dispatch;
 
 import io.casehub.platform.api.delivery.DeliveryAttempt;
 import io.casehub.platform.api.delivery.DeliveryChannels;
+import io.casehub.platform.api.delivery.DeliverySourceType;
 import io.casehub.platform.api.delivery.DeliveryStatus;
 import io.casehub.platform.api.delivery.DeliveryType;
 import io.casehub.platform.api.delivery.EngagementRecorded;
@@ -69,7 +70,7 @@ class InAppEngagementBridgeTest {
     @Test
     void skipsNonInAppAttempts() {
         var emailAttempt = new DeliveryAttempt(
-                UUIDv7.generate(), "notif-1", "email", "user-1", "tenant-1",
+                UUIDv7.generate(), "notif-1", DeliverySourceType.NOTIFICATION, "email", "user-1", "tenant-1",
                 DeliveryType.IMMEDIATE, DeliveryStatus.DELIVERED, 1,
                 Instant.now(), Instant.now(), Instant.now(), null, null, "{}",
                 null, null);
@@ -108,7 +109,7 @@ class InAppEngagementBridgeTest {
 
     private DeliveryAttempt inAppAttempt(String notificationId) {
         return new DeliveryAttempt(
-                UUIDv7.generate(), notificationId, DeliveryChannels.IN_APP, "user-1", "tenant-1",
+                UUIDv7.generate(), notificationId, DeliverySourceType.NOTIFICATION, DeliveryChannels.IN_APP, "user-1", "tenant-1",
                 DeliveryType.IMMEDIATE, DeliveryStatus.DELIVERED, 1,
                 Instant.now(), Instant.now(), Instant.now(), null, null, "{}",
                 null, null);

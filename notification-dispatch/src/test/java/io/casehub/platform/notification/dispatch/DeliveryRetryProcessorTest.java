@@ -8,6 +8,7 @@ import io.casehub.platform.api.delivery.DeliveryChannelDescriptor;
 import io.casehub.platform.api.delivery.DeliveryChannels;
 import io.casehub.platform.api.delivery.DeliveryExhausted;
 import io.casehub.platform.api.delivery.DeliveryResult;
+import io.casehub.platform.api.delivery.DeliverySourceType;
 import io.casehub.platform.api.delivery.DeliveryStatus;
 import io.casehub.platform.api.delivery.DeliveryType;
 import io.casehub.platform.api.delivery.DigestSummary;
@@ -59,7 +60,7 @@ class DeliveryRetryProcessorTest {
         processor.tick();
 
         var page = store.find(new io.casehub.platform.api.delivery.DeliveryAttemptQuery(
-                null, "tenant-1", null, null, null, 10));
+                null, "tenant-1", null, null, null, null, 10));
         assertThat(page.attempts()).anyMatch(a ->
                 a.status() == DeliveryStatus.DELIVERED && a.deliveredAt() != null);
     }
@@ -72,7 +73,7 @@ class DeliveryRetryProcessorTest {
 
         processor.tick();
 
-        var found = store.findByNotificationId(attempt.notificationId());
+        var found = store.findBySource(attempt.sourceId(), DeliverySourceType.NOTIFICATION);
         assertThat(found.getFirst().attemptCount()).isEqualTo(2);
         assertThat(found.getFirst().status()).isEqualTo(DeliveryStatus.RETRYING);
         assertThat(found.getFirst().nextRetryAt()).isAfter(Instant.now());
@@ -86,7 +87,7 @@ class DeliveryRetryProcessorTest {
 
         processor.tick();
 
-        var found = store.findByNotificationId(attempt.notificationId());
+        var found = store.findBySource(attempt.sourceId(), DeliverySourceType.NOTIFICATION);
         assertThat(found.getFirst().status()).isEqualTo(DeliveryStatus.EXPIRED);
     }
 
@@ -109,7 +110,7 @@ class DeliveryRetryProcessorTest {
         processor.tick();
 
         var page = store.find(new io.casehub.platform.api.delivery.DeliveryAttemptQuery(
-                null, "tenant-1", null, null, null, 10));
+                null, "tenant-1", null, null, null, null, 10));
         assertThat(page.attempts().getFirst().attemptCount()).isEqualTo(2);
         assertThat(page.attempts().getFirst().status()).isEqualTo(DeliveryStatus.RETRYING);
     }
@@ -121,7 +122,7 @@ class DeliveryRetryProcessorTest {
         processor.tick();
 
         var page = store.find(new io.casehub.platform.api.delivery.DeliveryAttemptQuery(
-                null, "tenant-1", null, null, null, 10));
+                null, "tenant-1", null, null, null, null, 10));
         assertThat(page.attempts().getFirst().status()).isEqualTo(DeliveryStatus.EXPIRED);
         assertThat(page.attempts().getFirst().failureReason()).contains("channel not registered");
     }
@@ -141,7 +142,7 @@ class DeliveryRetryProcessorTest {
     void skipsAttemptsWithFutureNextRetryAt() {
         channelRegistry.register(emailDescriptor(), new SuccessDeliverer());
         var attempt = new DeliveryAttempt(
-                UUIDv7.generate(), "notif-1", DeliveryChannels.EMAIL, "user-1", "tenant-1",
+                UUIDv7.generate(), "notif-1", DeliverySourceType.NOTIFICATION, DeliveryChannels.EMAIL, "user-1", "tenant-1",
                 DeliveryType.IMMEDIATE, DeliveryStatus.RETRYING, 1,
                 Instant.now(), Instant.now(), null,
                 Instant.now().plus(Duration.ofHours(1)),
@@ -150,7 +151,7 @@ class DeliveryRetryProcessorTest {
 
         processor.tick();
 
-        var found = store.findByNotificationId("notif-1");
+        var found = store.findBySource("notif-1", DeliverySourceType.NOTIFICATION);
         assertThat(found.getFirst().status()).isEqualTo(DeliveryStatus.RETRYING);
     }
 
@@ -162,7 +163,7 @@ class DeliveryRetryProcessorTest {
 
     private DeliveryAttempt retryableAttempt(DeliveryType type, int attemptCount) {
         return new DeliveryAttempt(
-                UUIDv7.generate(), "notif-1", DeliveryChannels.EMAIL, "user-1", "tenant-1",
+                UUIDv7.generate(), "notif-1", DeliverySourceType.NOTIFICATION, DeliveryChannels.EMAIL, "user-1", "tenant-1",
                 type, DeliveryStatus.RETRYING, attemptCount,
                 Instant.now(), Instant.now(), null,
                 Instant.now().minus(Duration.ofMinutes(1)),
@@ -171,7 +172,7 @@ class DeliveryRetryProcessorTest {
 
     private DeliveryAttempt retryableDigestAttempt() {
         return new DeliveryAttempt(
-                UUIDv7.generate(), null, DeliveryChannels.EMAIL, "user-1", "tenant-1",
+                UUIDv7.generate(), null, DeliverySourceType.NOTIFICATION, DeliveryChannels.EMAIL, "user-1", "tenant-1",
                 DeliveryType.DIGEST, DeliveryStatus.RETRYING, 1,
                 Instant.now(), Instant.now(), null,
                 Instant.now().minus(Duration.ofMinutes(1)),

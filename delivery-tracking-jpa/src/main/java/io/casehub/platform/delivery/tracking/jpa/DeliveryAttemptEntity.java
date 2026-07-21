@@ -1,6 +1,7 @@
 package io.casehub.platform.delivery.tracking.jpa;
 
 import io.casehub.platform.api.delivery.DeliveryAttempt;
+import io.casehub.platform.api.delivery.DeliverySourceType;
 import io.casehub.platform.api.delivery.DeliveryStatus;
 import io.casehub.platform.api.delivery.DeliveryType;
 
@@ -21,8 +22,12 @@ public class DeliveryAttemptEntity {
     @Column(name = "id", length = 36)
     public String id;
 
-    @Column(name = "notification_id", length = 36)
-    public String notificationId;
+    @Column(name = "source_id")
+    public String sourceId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", nullable = false, length = 30)
+    public DeliverySourceType sourceType;
 
     @Column(name = "channel_id", nullable = false)
     public String channelId;
@@ -61,17 +66,18 @@ public class DeliveryAttemptEntity {
 
     @Column(name = "payload", nullable = false, columnDefinition = "TEXT")
     public String payload;
+
     @Column(name = "first_opened_at")
     public Instant firstOpenedAt;
 
     @Column(name = "first_clicked_at")
     public Instant firstClickedAt;
 
-
     public static DeliveryAttemptEntity fromDomain(DeliveryAttempt attempt) {
         var entity = new DeliveryAttemptEntity();
         entity.id              = attempt.id();
-        entity.notificationId  = attempt.notificationId();
+        entity.sourceId        = attempt.sourceId();
+        entity.sourceType      = attempt.sourceType();
         entity.channelId       = attempt.channelId();
         entity.userId          = attempt.userId();
         entity.tenancyId       = attempt.tenancyId();
@@ -91,7 +97,7 @@ public class DeliveryAttemptEntity {
 
     public DeliveryAttempt toDomain() {
         return new DeliveryAttempt(
-                id, notificationId, channelId, userId, tenancyId,
+                id, sourceId, sourceType, channelId, userId, tenancyId,
                 deliveryType, status, attemptCount,
                 createdAt, lastAttemptedAt, deliveredAt,
                 nextRetryAt, failureReason, payload,

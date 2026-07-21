@@ -6,7 +6,8 @@ import java.util.Objects;
 public record EngagementEvent(
         String id,
         String attemptId,
-        String notificationId,
+        String sourceId,
+        DeliverySourceType sourceType,
         String channelId,
         String userId,
         String tenancyId,
@@ -16,7 +17,7 @@ public record EngagementEvent(
 ) {
     public EngagementEvent {
         Objects.requireNonNull(id, "id");
-        Objects.requireNonNull(attemptId, "attemptId");
+        Objects.requireNonNull(sourceType, "sourceType");
         Objects.requireNonNull(channelId, "channelId");
         Objects.requireNonNull(userId, "userId");
         Objects.requireNonNull(tenancyId, "tenancyId");

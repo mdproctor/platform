@@ -90,7 +90,7 @@ public class DeliveryRetryProcessor {
 
             if (result.success()) {
                 store.update(new DeliveryAttempt(
-                        attempt.id(), attempt.notificationId(), attempt.channelId(),
+                        attempt.id(), attempt.sourceId(), attempt.sourceType(), attempt.channelId(),
                         attempt.userId(), attempt.tenancyId(), attempt.deliveryType(),
                         DeliveryStatus.DELIVERED, attempt.attemptCount() + 1,
                         attempt.createdAt(), now, now, null, null, attempt.payload(),
@@ -111,7 +111,7 @@ public class DeliveryRetryProcessor {
         } else {
             Instant nextRetry = computeBackoff(newCount);
             store.update(new DeliveryAttempt(
-                    attempt.id(), attempt.notificationId(), attempt.channelId(),
+                    attempt.id(), attempt.sourceId(), attempt.sourceType(), attempt.channelId(),
                     attempt.userId(), attempt.tenancyId(), attempt.deliveryType(),
                     DeliveryStatus.RETRYING, newCount,
                     attempt.createdAt(), now, null,
@@ -122,7 +122,7 @@ public class DeliveryRetryProcessor {
 
     private void expire(DeliveryAttempt attempt, Instant now, String failureReason) {
         var expired = new DeliveryAttempt(
-                attempt.id(), attempt.notificationId(), attempt.channelId(),
+                attempt.id(), attempt.sourceId(), attempt.sourceType(), attempt.channelId(),
                 attempt.userId(), attempt.tenancyId(), attempt.deliveryType(),
                 DeliveryStatus.EXPIRED, attempt.attemptCount() + 1,
                 attempt.createdAt(), now, null, null,

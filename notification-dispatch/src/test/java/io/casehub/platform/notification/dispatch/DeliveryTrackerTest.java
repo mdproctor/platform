@@ -2,6 +2,7 @@ package io.casehub.platform.notification.dispatch;
 
 import io.casehub.platform.api.delivery.DeliveryAttemptQuery;
 import io.casehub.platform.api.delivery.DeliveryAttemptStore;
+import io.casehub.platform.api.delivery.DeliverySourceType;
 import io.casehub.platform.api.delivery.DeliveryStatus;
 import io.casehub.platform.api.delivery.DeliveryType;
 import io.casehub.platform.api.delivery.DigestSummary;
@@ -35,9 +36,9 @@ class DeliveryTrackerTest {
     @Test
     void recordsSuccessfulDelivery() {
         var input = testInput(NotificationSeverity.INFO);
-        tracker.recordSuccess("email", input, "notif-1");
+        tracker.recordSuccess("email", input, "notif-1", DeliverySourceType.NOTIFICATION);
 
-        var attempts = store.findByNotificationId("notif-1");
+        var attempts = store.findBySource("notif-1", DeliverySourceType.NOTIFICATION);
         assertThat(attempts).hasSize(1);
         assertThat(attempts.getFirst().status()).isEqualTo(DeliveryStatus.DELIVERED);
         assertThat(attempts.getFirst().deliveredAt()).isNotNull();
@@ -49,10 +50,10 @@ class DeliveryTrackerTest {
     @Test
     void recordsFailureWithRetry() {
         var input = testInput(NotificationSeverity.URGENT);
-        tracker.recordFailure("email", input, "notif-1",
+        tracker.recordFailure("email", input, "notif-1", DeliverySourceType.NOTIFICATION,
                 NotificationSeverity.WARNING, "connection refused");
 
-        var attempts = store.findByNotificationId("notif-1");
+        var attempts = store.findBySource("notif-1", DeliverySourceType.NOTIFICATION);
         assertThat(attempts).hasSize(1);
         assertThat(attempts.getFirst().status()).isEqualTo(DeliveryStatus.RETRYING);
         assertThat(attempts.getFirst().nextRetryAt()).isNotNull();
@@ -63,10 +64,10 @@ class DeliveryTrackerTest {
     @Test
     void recordsFailureWithoutRetryWhenBelowThreshold() {
         var input = testInput(NotificationSeverity.INFO);
-        tracker.recordFailure("email", input, "notif-1",
+        tracker.recordFailure("email", input, "notif-1", DeliverySourceType.NOTIFICATION,
                 NotificationSeverity.WARNING, "connection refused");
 
-        var attempts = store.findByNotificationId("notif-1");
+        var attempts = store.findBySource("notif-1", DeliverySourceType.NOTIFICATION);
         assertThat(attempts).hasSize(1);
         assertThat(attempts.getFirst().status()).isEqualTo(DeliveryStatus.FAILED);
         assertThat(attempts.getFirst().nextRetryAt()).isNull();
@@ -75,10 +76,10 @@ class DeliveryTrackerTest {
     @Test
     void recordsFailureWithoutRetryWhenThresholdNull() {
         var input = testInput(NotificationSeverity.URGENT);
-        tracker.recordFailure("email", input, "notif-1",
+        tracker.recordFailure("email", input, "notif-1", DeliverySourceType.NOTIFICATION,
                 null, "connection refused");
 
-        var attempts = store.findByNotificationId("notif-1");
+        var attempts = store.findBySource("notif-1", DeliverySourceType.NOTIFICATION);
         assertThat(attempts).hasSize(1);
         assertThat(attempts.getFirst().status()).isEqualTo(DeliveryStatus.FAILED);
     }
@@ -91,7 +92,7 @@ class DeliveryTrackerTest {
 
         assertThat(preRecorded).isNotNull();
         var page = store.find(new DeliveryAttemptQuery(
-                summary.userId(), summary.tenancyId(), null, null, null, 10));
+                summary.userId(), summary.tenancyId(), null, null, null, null, 10));
         assertThat(page.attempts()).anyMatch(a ->
                 a.id().equals(preRecorded.id())
                         && a.status() == DeliveryStatus.RETRYING
@@ -107,7 +108,7 @@ class DeliveryTrackerTest {
                 NotificationSeverity.WARNING);
 
         var page = store.find(new DeliveryAttemptQuery(
-                summary.userId(), summary.tenancyId(), null, null, null, 10));
+                summary.userId(), summary.tenancyId(), null, null, null, null, 10));
         assertThat(page.attempts()).anyMatch(a ->
                 a.id().equals(preRecorded.id())
                         && a.status() == DeliveryStatus.FAILED);
@@ -122,7 +123,7 @@ class DeliveryTrackerTest {
         tracker.confirmDigestSuccess(preRecorded);
 
         var page = store.find(new DeliveryAttemptQuery(
-                summary.userId(), summary.tenancyId(), null, null, null, 10));
+                summary.userId(), summary.tenancyId(), null, null, null, null, 10));
         assertThat(page.attempts()).anyMatch(a ->
                 a.id().equals(preRecorded.id())
                         && a.status() == DeliveryStatus.DELIVERED
@@ -138,7 +139,7 @@ class DeliveryTrackerTest {
         tracker.confirmDigestFailure(preRecorded, "SMTP timeout");
 
         var page = store.find(new DeliveryAttemptQuery(
-                summary.userId(), summary.tenancyId(), null, null, null, 10));
+                summary.userId(), summary.tenancyId(), null, null, null, null, 10));
         assertThat(page.attempts()).anyMatch(a ->
                 a.id().equals(preRecorded.id())
                         && a.status() == DeliveryStatus.RETRYING
@@ -150,9 +151,9 @@ class DeliveryTrackerTest {
     @Test
     void payloadSerializesAndDeserializes() {
         var input = testInput(NotificationSeverity.WARNING);
-        tracker.recordSuccess("email", input, "notif-1");
+        tracker.recordSuccess("email", input, "notif-1", DeliverySourceType.NOTIFICATION);
 
-        var attempts = store.findByNotificationId("notif-1");
+        var attempts = store.findBySource("notif-1", DeliverySourceType.NOTIFICATION);
         assertThat(attempts.getFirst().payload()).contains("Test Notification");
     }
 

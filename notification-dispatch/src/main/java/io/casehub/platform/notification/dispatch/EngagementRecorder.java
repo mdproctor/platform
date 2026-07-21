@@ -41,7 +41,8 @@ public class EngagementRecorder {
         var event = new EngagementEvent(
                 UUIDv7.generate(),
                 attempt.id(),
-                attempt.notificationId(),
+                attempt.sourceId(),
+                attempt.sourceType(),
                 attempt.channelId(),
                 attempt.userId(),
                 attempt.tenancyId(),

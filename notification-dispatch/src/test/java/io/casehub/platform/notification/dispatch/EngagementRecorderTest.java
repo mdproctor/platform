@@ -1,6 +1,7 @@
 package io.casehub.platform.notification.dispatch;
 
 import io.casehub.platform.api.delivery.DeliveryAttempt;
+import io.casehub.platform.api.delivery.DeliverySourceType;
 import io.casehub.platform.api.delivery.DeliveryStatus;
 import io.casehub.platform.api.delivery.DeliveryType;
 import io.casehub.platform.api.delivery.EngagementRecorded;
@@ -41,7 +42,7 @@ class EngagementRecorderTest {
         assertThat(events).hasSize(1);
         assertThat(events.getFirst().type()).isEqualTo(EngagementType.OPENED);
         assertThat(events.getFirst().attemptId()).isEqualTo(attempt.id());
-        assertThat(events.getFirst().notificationId()).isEqualTo(attempt.notificationId());
+        assertThat(events.getFirst().sourceId()).isEqualTo(attempt.sourceId());
         assertThat(events.getFirst().channelId()).isEqualTo(attempt.channelId());
         assertThat(events.getFirst().userId()).isEqualTo(attempt.userId());
         assertThat(events.getFirst().tenancyId()).isEqualTo(attempt.tenancyId());
@@ -70,7 +71,7 @@ class EngagementRecorderTest {
 
     private DeliveryAttempt deliveredAttempt() {
         return new DeliveryAttempt(
-                UUIDv7.generate(), "notif-1", "email", "user-1", "tenant-1",
+                UUIDv7.generate(), "notif-1", DeliverySourceType.NOTIFICATION, "email", "user-1", "tenant-1",
                 DeliveryType.IMMEDIATE, DeliveryStatus.DELIVERED, 1,
                 Instant.now(), Instant.now(), Instant.now(), null, null, "{}",
                 null, null);

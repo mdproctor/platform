@@ -1,6 +1,7 @@
 package io.casehub.platform.notification.dispatch;
 
 import io.casehub.platform.api.delivery.DeliveryAttemptStore;
+import io.casehub.platform.api.delivery.DeliverySourceType;
 import io.casehub.platform.api.delivery.DeliveryChannels;
 import io.casehub.platform.api.delivery.EngagementType;
 import io.casehub.platform.api.notification.NotificationStatus;
@@ -45,7 +46,7 @@ public class InAppEngagementBridge {
         } else {
             return;
         }
-        var attempts = store.findByNotificationId(notification.id());
+        var attempts = store.findBySource(notification.id(), DeliverySourceType.NOTIFICATION);
         var inAppAttempt = attempts.stream()
                 .filter(a -> DeliveryChannels.IN_APP.equals(a.channelId()))
                 .findFirst()

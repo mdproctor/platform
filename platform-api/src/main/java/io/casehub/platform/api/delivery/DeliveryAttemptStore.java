@@ -11,11 +11,12 @@ public interface DeliveryAttemptStore {
 
     List<DeliveryAttempt> claimRetryable(Instant now, int batchSize);
     DeliveryAttemptPage find(DeliveryAttemptQuery query);
-    List<DeliveryAttempt> findByNotificationId(String notificationId);
+
+    List<DeliveryAttempt> findBySource(String sourceId, DeliverySourceType sourceType);
 
     void recordEngagement(EngagementEvent event);
 
     List<EngagementEvent> findEngagementsByAttemptId(String attemptId);
 
-    List<EngagementEvent> findEngagementsByNotificationId(String notificationId);
+    List<EngagementEvent> findEngagementsBySource(String sourceId, DeliverySourceType sourceType);
 }

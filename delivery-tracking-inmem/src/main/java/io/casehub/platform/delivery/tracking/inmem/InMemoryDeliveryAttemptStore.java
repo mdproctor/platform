@@ -4,6 +4,7 @@ import io.casehub.platform.api.delivery.DeliveryAttempt;
 import io.casehub.platform.api.delivery.DeliveryAttemptPage;
 import io.casehub.platform.api.delivery.DeliveryAttemptQuery;
 import io.casehub.platform.api.delivery.DeliveryAttemptStore;
+import io.casehub.platform.api.delivery.DeliverySourceType;
 import io.casehub.platform.api.delivery.DeliveryStatus;
 import io.casehub.platform.api.delivery.EngagementEvent;
 import io.casehub.platform.api.delivery.EngagementType;
@@ -71,7 +72,7 @@ public class InMemoryDeliveryAttemptStore implements DeliveryAttemptStore {
         List<DeliveryAttempt> claimed     = new ArrayList<>(eligible.size());
         for (DeliveryAttempt a : eligible) {
             var advanced = new DeliveryAttempt(
-                    a.id(), a.notificationId(), a.channelId(), a.userId(), a.tenancyId(),
+                    a.id(), a.sourceId(), a.sourceType(), a.channelId(), a.userId(), a.tenancyId(),
                     a.deliveryType(), a.status(), a.attemptCount(),
                     a.createdAt(), a.lastAttemptedAt(), a.deliveredAt(),
                     claimExpiry, a.failureReason(), a.payload(),
@@ -89,6 +90,7 @@ public class InMemoryDeliveryAttemptStore implements DeliveryAttemptStore {
                                               .filter(a -> query.userId() == null || a.userId().equals(query.userId()))
                                               .filter(a -> query.channelId() == null || a.channelId().equals(query.channelId()))
                                               .filter(a -> query.status() == null || a.status() == query.status())
+                                              .filter(a -> query.sourceType() == null || a.sourceType() == query.sourceType())
                                               .sorted(Comparator.comparing(DeliveryAttempt::createdAt).reversed()
                                                                 .thenComparing(Comparator.comparing(DeliveryAttempt::id).reversed()))
                                               .toList();
@@ -106,9 +108,9 @@ public class InMemoryDeliveryAttemptStore implements DeliveryAttemptStore {
     }
 
     @Override
-    public List<DeliveryAttempt> findByNotificationId(String notificationId) {
+    public List<DeliveryAttempt> findBySource(String sourceId, DeliverySourceType sourceType) {
         return store.values().stream()
-                    .filter(a -> notificationId.equals(a.notificationId()))
+                    .filter(a -> sourceId.equals(a.sourceId()) && sourceType == a.sourceType())
                     .sorted(Comparator.comparing(DeliveryAttempt::createdAt))
                     .toList();
     }
@@ -143,7 +145,7 @@ public class InMemoryDeliveryAttemptStore implements DeliveryAttemptStore {
                 return attempt;
             }
             return new DeliveryAttempt(
-                    attempt.id(), attempt.notificationId(), attempt.channelId(),
+                    attempt.id(), attempt.sourceId(), attempt.sourceType(), attempt.channelId(),
                     attempt.userId(), attempt.tenancyId(), attempt.deliveryType(),
                     attempt.status(), attempt.attemptCount(),
                     attempt.createdAt(), attempt.lastAttemptedAt(), attempt.deliveredAt(),
@@ -158,10 +160,10 @@ public class InMemoryDeliveryAttemptStore implements DeliveryAttemptStore {
     }
 
     @Override
-    public List<EngagementEvent> findEngagementsByNotificationId(String notificationId) {
+    public List<EngagementEvent> findEngagementsBySource(String sourceId, DeliverySourceType sourceType) {
         return engagementStore.values().stream()
                               .flatMap(List::stream)
-                              .filter(e -> notificationId.equals(e.notificationId()))
+                              .filter(e -> sourceId.equals(e.sourceId()) && sourceType == e.sourceType())
                               .sorted(Comparator.comparing(EngagementEvent::recordedAt))
                               .toList();
     }

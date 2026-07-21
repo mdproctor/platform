@@ -5,7 +5,8 @@ import java.util.Objects;
 
 public record DeliveryAttempt(
         String id,
-        String notificationId,
+        String sourceId,
+        DeliverySourceType sourceType,
         String channelId,
         String userId,
         String tenancyId,
@@ -23,6 +24,7 @@ public record DeliveryAttempt(
 ) {
     public DeliveryAttempt {
         Objects.requireNonNull(id, "id");
+        Objects.requireNonNull(sourceType, "sourceType");
         Objects.requireNonNull(channelId, "channelId");
         Objects.requireNonNull(userId, "userId");
         Objects.requireNonNull(tenancyId, "tenancyId");

@@ -1,6 +1,7 @@
 package io.casehub.platform.notification.dispatch;
 
 import io.casehub.platform.api.delivery.DeliveryAttempt;
+import io.casehub.platform.api.delivery.DeliverySourceType;
 import io.casehub.platform.api.delivery.DeliveryStatus;
 import io.casehub.platform.api.delivery.DeliveryType;
 import io.casehub.platform.api.delivery.EngagementCallbackHandler;
@@ -160,7 +161,7 @@ class EngagementCallbackResourceTest {
 
     private DeliveryAttempt deliveredAttempt() {
         return new DeliveryAttempt(
-                UUIDv7.generate(), "notif-1", "email", "user-1", "tenant-1",
+                UUIDv7.generate(), "notif-1", DeliverySourceType.NOTIFICATION, "email", "user-1", "tenant-1",
                 DeliveryType.IMMEDIATE, DeliveryStatus.DELIVERED, 1,
                 Instant.now(), Instant.now(), Instant.now(), null, null, "{}",
                 null, null);

@@ -2,6 +2,7 @@ package io.casehub.platform.delivery.tracking.inmem;
 
 import io.casehub.platform.api.delivery.DeliveryAttempt;
 import io.casehub.platform.api.delivery.DeliveryAttemptQuery;
+import io.casehub.platform.api.delivery.DeliverySourceType;
 import io.casehub.platform.api.delivery.DeliveryStatus;
 import io.casehub.platform.api.delivery.DeliveryType;
 import io.casehub.platform.api.delivery.EngagementEvent;
@@ -25,11 +26,11 @@ class InMemoryDeliveryAttemptStoreTest {
     }
 
     @Test
-    void storeAndFindByNotificationId() {
+    void storeAndFindBySource() {
         var attempt = attempt("notif-1", DeliveryStatus.DELIVERED);
         store.store(attempt);
 
-        var found = store.findByNotificationId("notif-1");
+        var found = store.findBySource("notif-1", DeliverySourceType.NOTIFICATION);
         assertThat(found).hasSize(1);
         assertThat(found.getFirst().id()).isEqualTo(attempt.id());
         assertThat(found.getFirst().channelId()).isEqualTo("email");
@@ -57,8 +58,8 @@ class InMemoryDeliveryAttemptStoreTest {
 
         store.claimRetryable(now, 10);
 
-        var afterClaim = store.findByNotificationId(retryable.notificationId());
-        assertThat(afterClaim.getFirst().nextRetryAt()).isAfter(now);
+        var afterClaim = store.findById(retryable.id());
+        assertThat(afterClaim.nextRetryAt()).isAfter(now);
     }
 
     @Test
@@ -78,29 +79,30 @@ class InMemoryDeliveryAttemptStoreTest {
         store.store(attempt("notif-2", "user-b", "tenant-1", "sms", DeliveryStatus.FAILED));
         store.store(attempt("notif-3", "user-a", "tenant-1", "email", DeliveryStatus.RETRYING));
 
-        var byUser = store.find(new DeliveryAttemptQuery("user-a", "tenant-1", null, null, null, 10));
+        var byUser = store.find(new DeliveryAttemptQuery("user-a", "tenant-1", null, null, null, null, 10));
         assertThat(byUser.attempts()).hasSize(2);
 
-        var byChannel = store.find(new DeliveryAttemptQuery(null, "tenant-1", "sms", null, null, 10));
+        var byChannel = store.find(new DeliveryAttemptQuery(null, "tenant-1", "sms", null, null, null, 10));
         assertThat(byChannel.attempts()).hasSize(1);
 
-        var byStatus = store.find(new DeliveryAttemptQuery(null, "tenant-1", null, DeliveryStatus.DELIVERED, null, 10));
+        var byStatus = store.find(new DeliveryAttemptQuery(null, "tenant-1", null, DeliveryStatus.DELIVERED, null, null, 10));
         assertThat(byStatus.attempts()).hasSize(1);
     }
 
     @Test
     void updateModifiesExistingRecord() {
-        var attempt = attempt("notif-1", DeliveryStatus.RETRYING);
+        var attempt = attempt("src-1", DeliveryStatus.RETRYING);
         store.store(attempt);
 
         var updated = new DeliveryAttempt(
-                attempt.id(), attempt.notificationId(), attempt.channelId(),
+                attempt.id(), attempt.sourceId(), attempt.sourceType(), attempt.channelId(),
                 attempt.userId(), attempt.tenancyId(), attempt.deliveryType(),
                 DeliveryStatus.DELIVERED, 2,
-                attempt.createdAt(), Instant.now(), Instant.now(), null, null, attempt.payload(), attempt.firstOpenedAt(), attempt.firstClickedAt());
+                attempt.createdAt(), Instant.now(), Instant.now(), null, null, attempt.payload(),
+                attempt.firstOpenedAt(), attempt.firstClickedAt());
         store.update(updated);
 
-        var found = store.findByNotificationId("notif-1");
+        var found = store.findBySource("src-1", DeliverySourceType.NOTIFICATION);
         assertThat(found.getFirst().status()).isEqualTo(DeliveryStatus.DELIVERED);
         assertThat(found.getFirst().attemptCount()).isEqualTo(2);
     }
@@ -112,20 +114,20 @@ class InMemoryDeliveryAttemptStoreTest {
             store.store(attempt("notif-" + i, DeliveryStatus.DELIVERED));
         }
 
-        var all = store.find(new DeliveryAttemptQuery(null, "tenant-1", null, null, null, 100));
+        var all = store.find(new DeliveryAttemptQuery(null, "tenant-1", null, null, null, null, 100));
         assertThat(all.attempts()).hasSize(3);
     }
 
     @Test
-    void findByNotificationIdReturnsEmptyForUnknown() {
-        var all = store.findByNotificationId("unknown");
+    void findBySourceReturnsEmptyForUnknown() {
+        var all = store.findBySource("unknown", DeliverySourceType.NOTIFICATION);
         assertThat(all).isEmpty();
     }
 
     @Test
     void claimRetryableSkipsNullNextRetryAt() {
         var attempt = new DeliveryAttempt(
-                UUIDv7.generate(), "notif-1", "email", "user-1", "tenant-1",
+                UUIDv7.generate(), "src-1", DeliverySourceType.NOTIFICATION, "email", "user-1", "tenant-1",
                 DeliveryType.DIGEST, DeliveryStatus.RETRYING, 0,
                 Instant.now(), null, null, null, null, "{}", null, null);
         store.store(attempt);
@@ -140,14 +142,14 @@ class InMemoryDeliveryAttemptStoreTest {
             store.store(attempt("notif-" + i, DeliveryStatus.DELIVERED));
         }
 
-        var page1 = store.find(new DeliveryAttemptQuery(null, "tenant-1", null, null, null, 2));
+        var page1 = store.find(new DeliveryAttemptQuery(null, "tenant-1", null, null, null, null, 2));
         assertThat(page1.attempts()).hasSize(2);
         assertThat(page1.nextCursor()).isNotNull();
 
-        var page2 = store.find(new DeliveryAttemptQuery(null, "tenant-1", null, null, page1.nextCursor(), 2));
+        var page2 = store.find(new DeliveryAttemptQuery(null, "tenant-1", null, null, null, page1.nextCursor(), 2));
         assertThat(page2.attempts()).hasSize(2);
 
-        var page3 = store.find(new DeliveryAttemptQuery(null, "tenant-1", null, null, page2.nextCursor(), 2));
+        var page3 = store.find(new DeliveryAttemptQuery(null, "tenant-1", null, null, null, page2.nextCursor(), 2));
         assertThat(page3.attempts()).hasSize(1);
         assertThat(page3.nextCursor()).isNull();
     }
@@ -160,7 +162,7 @@ class InMemoryDeliveryAttemptStoreTest {
         var attempt = attempt("notif-1", DeliveryStatus.DELIVERED);
         store.store(attempt);
         var event = new EngagementEvent(
-                "eng-1", attempt.id(), "notif-1", "email", "user-1", "tenant-1",
+                "eng-1", attempt.id(), "notif-1", DeliverySourceType.NOTIFICATION, "email", "user-1", "tenant-1",
                 EngagementType.OPENED, Instant.now(), null);
         store.recordEngagement(event);
         var events = store.findEngagementsByAttemptId(attempt.id());
@@ -174,9 +176,9 @@ class InMemoryDeliveryAttemptStoreTest {
         store.store(attempt);
         var now = Instant.now();
         store.recordEngagement(new EngagementEvent(
-                "eng-1", attempt.id(), "notif-1", "email", "user-1", "tenant-1",
+                "eng-1", attempt.id(), "notif-1", DeliverySourceType.NOTIFICATION, "email", "user-1", "tenant-1",
                 EngagementType.OPENED, now, null));
-        var updated = store.findByNotificationId("notif-1").getFirst();
+        var updated = store.findBySource("notif-1", DeliverySourceType.NOTIFICATION).getFirst();
         assertThat(updated.firstOpenedAt()).isEqualTo(now);
         assertThat(updated.firstClickedAt()).isNull();
     }
@@ -187,9 +189,9 @@ class InMemoryDeliveryAttemptStoreTest {
         store.store(attempt);
         var now = Instant.now();
         store.recordEngagement(new EngagementEvent(
-                "eng-1", attempt.id(), "notif-1", "email", "user-1", "tenant-1",
+                "eng-1", attempt.id(), "notif-1", DeliverySourceType.NOTIFICATION, "email", "user-1", "tenant-1",
                 EngagementType.CLICKED, now, null));
-        var updated = store.findByNotificationId("notif-1").getFirst();
+        var updated = store.findBySource("notif-1", DeliverySourceType.NOTIFICATION).getFirst();
         assertThat(updated.firstClickedAt()).isEqualTo(now);
         assertThat(updated.firstOpenedAt()).isNull();
     }
@@ -201,30 +203,30 @@ class InMemoryDeliveryAttemptStoreTest {
         var first  = Instant.now().minusSeconds(60);
         var second = Instant.now();
         store.recordEngagement(new EngagementEvent(
-                "eng-1", attempt.id(), "notif-1", "email", "user-1", "tenant-1",
+                "eng-1", attempt.id(), "notif-1", DeliverySourceType.NOTIFICATION, "email", "user-1", "tenant-1",
                 EngagementType.OPENED, first, null));
         store.recordEngagement(new EngagementEvent(
-                "eng-2", attempt.id(), "notif-1", "email", "user-1", "tenant-1",
+                "eng-2", attempt.id(), "notif-1", DeliverySourceType.NOTIFICATION, "email", "user-1", "tenant-1",
                 EngagementType.OPENED, second, null));
-        var updated = store.findByNotificationId("notif-1").getFirst();
+        var updated = store.findBySource("notif-1", DeliverySourceType.NOTIFICATION).getFirst();
         assertThat(updated.firstOpenedAt()).isEqualTo(first);
         var events = store.findEngagementsByAttemptId(attempt.id());
         assertThat(events).hasSize(2);
     }
 
     @Test
-    void findEngagementsByNotificationIdAcrossAttempts() {
+    void findEngagementsBySourceAcrossAttempts() {
         var a1 = attempt("notif-1", DeliveryStatus.DELIVERED);
         var a2 = attempt("notif-1", "user-2", "tenant-1", "email", DeliveryStatus.DELIVERED);
         store.store(a1);
         store.store(a2);
         store.recordEngagement(new EngagementEvent(
-                "eng-1", a1.id(), "notif-1", "email", "user-1", "tenant-1",
+                "eng-1", a1.id(), "notif-1", DeliverySourceType.NOTIFICATION, "email", "user-1", "tenant-1",
                 EngagementType.OPENED, Instant.now(), null));
         store.recordEngagement(new EngagementEvent(
-                "eng-2", a2.id(), "notif-1", "email", "user-2", "tenant-1",
+                "eng-2", a2.id(), "notif-1", DeliverySourceType.NOTIFICATION, "email", "user-2", "tenant-1",
                 EngagementType.CLICKED, Instant.now(), null));
-        var events = store.findEngagementsByNotificationId("notif-1");
+        var events = store.findEngagementsBySource("notif-1", DeliverySourceType.NOTIFICATION);
         assertThat(events).hasSize(2);
     }
 
@@ -234,7 +236,7 @@ class InMemoryDeliveryAttemptStoreTest {
         var a1         = attempt("notif-1", DeliveryStatus.DELIVERED);
         smallStore.store(a1);
         smallStore.recordEngagement(new EngagementEvent(
-                "eng-1", a1.id(), "notif-1", "email", "user-1", "tenant-1",
+                "eng-1", a1.id(), "notif-1", DeliverySourceType.NOTIFICATION, "email", "user-1", "tenant-1",
                 EngagementType.OPENED, Instant.now(), null));
         var a2 = attempt("notif-2", DeliveryStatus.DELIVERED);
         smallStore.store(a2);
@@ -253,7 +255,7 @@ class InMemoryDeliveryAttemptStoreTest {
             var t = new Thread(() -> {
                 try { latch.await(); } catch (InterruptedException ignored) {}
                 store.recordEngagement(new EngagementEvent(
-                        "eng-" + idx, attempt.id(), "notif-1", "email", "user-1", "tenant-1",
+                        "eng-" + idx, attempt.id(), "notif-1", DeliverySourceType.NOTIFICATION, "email", "user-1", "tenant-1",
                         EngagementType.OPENED, Instant.now(), null));
             });
             threads.add(t);
@@ -265,21 +267,22 @@ class InMemoryDeliveryAttemptStoreTest {
         assertThat(events).hasSize(threadCount);
     }
 
-    private DeliveryAttempt attempt(String notificationId, DeliveryStatus status) {
-        return attempt(notificationId, "user-1", "tenant-1", "email", status);
+    private DeliveryAttempt attempt(String sourceId, DeliveryStatus status) {
+        return attempt(sourceId, "user-1", "tenant-1", "email", status);
     }
 
     private DeliveryAttempt attempt(DeliveryStatus status, Instant nextRetryAt) {
         return new DeliveryAttempt(
-                UUIDv7.generate(), "notif-x", "email", "user-1", "tenant-1",
+                UUIDv7.generate(), null, DeliverySourceType.NOTIFICATION, "email", "user-1", "tenant-1",
                 DeliveryType.IMMEDIATE, status, 1,
                 Instant.now(), Instant.now(), null, nextRetryAt, "timeout", "{}", null, null);
     }
 
-    private DeliveryAttempt attempt(String notificationId, String userId, String tenancyId,
+    private DeliveryAttempt attempt(String sourceId, String userId, String tenancyId,
                                     String channelId, DeliveryStatus status) {
         return new DeliveryAttempt(
-                UUIDv7.generate(), notificationId, channelId, userId, tenancyId,
+                UUIDv7.generate(), sourceId, DeliverySourceType.NOTIFICATION,
+                channelId, userId, tenancyId,
                 DeliveryType.IMMEDIATE, status, 1,
                 Instant.now(), Instant.now(),
                 status == DeliveryStatus.DELIVERED ? Instant.now() : null,

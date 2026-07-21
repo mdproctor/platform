@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.platform.api.delivery.DeliveryAttempt;
 import io.casehub.platform.api.delivery.DeliveryAttemptStore;
+import io.casehub.platform.api.delivery.DeliverySourceType;
 import io.casehub.platform.api.delivery.DeliveryStatus;
 import io.casehub.platform.api.delivery.DeliveryType;
 import io.casehub.platform.api.delivery.DigestSummary;
@@ -38,11 +39,12 @@ public class DeliveryTracker {
         this.baseDelay = baseDelay;
     }
 
-    public void recordSuccess(String channelId, NotificationInput input, String notificationId) {
+    public void recordSuccess(String channelId, NotificationInput input,
+                              String sourceId, DeliverySourceType sourceType) {
         var now = Instant.now();
         try {
             store.store(new DeliveryAttempt(
-                    UUIDv7.generate(), notificationId, channelId,
+                    UUIDv7.generate(), sourceId, sourceType, channelId,
                     input.userId(), input.tenancyId(),
                     DeliveryType.IMMEDIATE, DeliveryStatus.DELIVERED, 1,
                     now, now, now, null, null,
@@ -53,14 +55,15 @@ public class DeliveryTracker {
         }
     }
 
-    public void recordFailure(String channelId, NotificationInput input, String notificationId,
+    public void recordFailure(String channelId, NotificationInput input,
+                              String sourceId, DeliverySourceType sourceType,
                               NotificationSeverity guaranteedMinSeverity, String failureReason) {
         var now = Instant.now();
         boolean retryEligible = guaranteedMinSeverity != null
                                 && input.severity().isAtLeast(guaranteedMinSeverity);
         try {
             store.store(new DeliveryAttempt(
-                    UUIDv7.generate(), notificationId, channelId,
+                    UUIDv7.generate(), sourceId, sourceType, channelId,
                     input.userId(), input.tenancyId(),
                     DeliveryType.IMMEDIATE,
                     retryEligible ? DeliveryStatus.RETRYING : DeliveryStatus.FAILED,
@@ -86,7 +89,7 @@ public class DeliveryTracker {
                                 && maxSeverity.isAtLeast(guaranteedMinSeverity);
 
         var attempt = new DeliveryAttempt(
-                UUIDv7.generate(), null, channelId,
+                UUIDv7.generate(), null, DeliverySourceType.NOTIFICATION, channelId,
                 summary.userId(), summary.tenancyId(),
                 DeliveryType.DIGEST,
                 retryEligible ? DeliveryStatus.RETRYING : DeliveryStatus.FAILED,
@@ -107,7 +110,8 @@ public class DeliveryTracker {
         var now = Instant.now();
         try {
             store.update(new DeliveryAttempt(
-                    preRecorded.id(), preRecorded.notificationId(), preRecorded.channelId(),
+                    preRecorded.id(), preRecorded.sourceId(), preRecorded.sourceType(),
+                    preRecorded.channelId(),
                     preRecorded.userId(), preRecorded.tenancyId(), preRecorded.deliveryType(),
                     DeliveryStatus.DELIVERED, preRecorded.attemptCount() + 1,
                     preRecorded.createdAt(), now, now, null, null, preRecorded.payload(),
@@ -121,7 +125,8 @@ public class DeliveryTracker {
         var now = Instant.now();
         try {
             store.update(new DeliveryAttempt(
-                    preRecorded.id(), preRecorded.notificationId(), preRecorded.channelId(),
+                    preRecorded.id(), preRecorded.sourceId(), preRecorded.sourceType(),
+                    preRecorded.channelId(),
                     preRecorded.userId(), preRecorded.tenancyId(), preRecorded.deliveryType(),
                     DeliveryStatus.RETRYING, 1,
                     preRecorded.createdAt(), now, null,
