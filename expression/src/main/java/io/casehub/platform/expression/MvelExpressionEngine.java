@@ -22,14 +22,13 @@ public class MvelExpressionEngine implements ExpressionEngine {
     private final ConcurrentHashMap<CacheKey, CompiledExpression<?, ?>> cache = new ConcurrentHashMap<>();
 
     @SuppressWarnings("unchecked")
-    static <R> Evaluator<Map<String, Object>, Void, R> compileWithTypes(
-            String expression, Map<String, Object> context, Class<R> resultType) {
-        Map<String, Type<?>> types = MVEL.getTypeMap(context);
-        return MVEL.<Object>map(Declaration.from(types))
-                   .<R>out(resultType)
-                   .expression(expression)
-                   .imports(Collections.emptySet())
-                   .compile();
+    static <R> Evaluator<Map<String, Object>, Void, R> compileMapEvaluator(
+            String expression, Map<String, Object> evalContext, Class<R> resultType) {
+        Map<String, Type<?>> types   = MVEL.getTypeMap(evalContext);
+        var                  content = MVEL.<Object>map(Declaration.from(types)).<R>out(resultType);
+        var builder = expression.indexOf(';') > 0
+                      ? content.block(expression) : content.expression(expression);
+        return builder.imports(Collections.emptySet()).compile();
     }
 
     @Override
@@ -51,10 +50,15 @@ public class MvelExpressionEngine implements ExpressionEngine {
         Objects.requireNonNull(resultType, "resultType");
 
         Map<String, Object> boundVars = variables.isEmpty() ? Map.of() : Map.copyOf(variables);
+        var                 key       = new CacheKey(expression, contextType, resultType, boundVars);
 
-        var key = new CacheKey(expression, contextType, resultType, boundVars);
-        return (CompiledExpression<C, R>) cache.computeIfAbsent(key,
-                                                                k -> new LazyMvelExpression<>(expression, resultType, boundVars));
+        return (CompiledExpression<C, R>) cache.computeIfAbsent(key, k -> {
+            if (Map.class.isAssignableFrom(contextType)) {
+                return new LazyMapMvelExpression<>(expression, resultType, boundVars);
+            } else {
+                return new PojoAdapterMvelExpression<>(expression, contextType, resultType, boundVars);
+            }
+        });
     }
 
     @Override
@@ -65,15 +69,16 @@ public class MvelExpressionEngine implements ExpressionEngine {
         // is not possible. Callers who need full validation should call compile().
         if (expression.isBlank()) {
             throw new ExpressionCompilationException("MVEL expression must not be blank");
-        }}
+        }
+    }
 
-    private static class LazyMvelExpression<R> implements CompiledExpression<Map<String, Object>, R> {
+    private static class LazyMapMvelExpression<R> implements CompiledExpression<Map<String, Object>, R> {
         private final    String                                  expression;
         private final    Class<R>                                resultType;
         private final    Map<String, Object>                     boundVars;
         private volatile Evaluator<Map<String, Object>, Void, R> delegate;
 
-        LazyMvelExpression(String expression, Class<R> resultType, Map<String, Object> boundVars) {
+        LazyMapMvelExpression(String expression, Class<R> resultType, Map<String, Object> boundVars) {
             this.expression = expression;
             this.resultType = resultType;
             this.boundVars  = boundVars;
@@ -96,7 +101,7 @@ public class MvelExpressionEngine implements ExpressionEngine {
                 synchronized (this) {
                     if (delegate == null) {
                         try {
-                            delegate = compileWithTypes(expression, evalContext, resultType);
+                            delegate = compileMapEvaluator(expression, evalContext, resultType);
                         } catch (Exception e) {
                             throw new ExpressionCompilationException(
                                     "Failed to compile MVEL expression: " + expression, e);
@@ -112,6 +117,78 @@ public class MvelExpressionEngine implements ExpressionEngine {
                 throw new ExpressionEvaluationException(
                         "MVEL evaluation failed for: " + expression, e);
             }
+        }
+    }
+
+
+    private static class PojoAdapterMvelExpression<C, R> implements CompiledExpression<C, R> {
+        private final    String                                  expression;
+        private final    Class<C>                                contextType;
+        private final    Class<R>                                resultType;
+        private final    Map<String, Object>                     boundVars;
+        private final    java.beans.PropertyDescriptor[]         propertyDescriptors;
+        private volatile Evaluator<Map<String, Object>, Void, R> delegate;
+
+        PojoAdapterMvelExpression(String expression, Class<C> contextType,
+                                  Class<R> resultType, Map<String, Object> boundVars) {
+            this.expression  = expression;
+            this.contextType = contextType;
+            this.resultType  = resultType;
+            this.boundVars   = boundVars;
+            try {
+                this.propertyDescriptors = java.beans.Introspector
+                                                   .getBeanInfo(contextType, Object.class).getPropertyDescriptors();
+            } catch (java.beans.IntrospectionException e) {
+                throw new ExpressionCompilationException(
+                        "Failed to introspect POJO class: " + contextType.getName(), e);
+            }
+        }
+
+        @Override
+        public String type() {return "mvel";}
+
+        @Override
+        public R eval(C context) {
+            Map<String, Object> map = toMap(context);
+
+            if (delegate == null) {
+                synchronized (this) {
+                    if (delegate == null) {
+                        try {
+                            delegate = compileMapEvaluator(expression, map, resultType);
+                        } catch (Exception e) {
+                            throw new ExpressionCompilationException(
+                                    "Failed to compile MVEL expression: " + expression, e);
+                        }
+                    }
+                }
+            }
+            try {
+                return delegate.eval(map);
+            } catch (ExpressionCompilationException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new ExpressionEvaluationException(
+                        "MVEL evaluation failed for: " + expression, e);
+            }
+        }
+
+        private Map<String, Object> toMap(C context) {
+            Map<String, Object> map = new HashMap<>();
+            for (var pd : propertyDescriptors) {
+                if (pd.getReadMethod() != null) {
+                    try {
+                        map.put(pd.getName(), pd.getReadMethod().invoke(context));
+                    } catch (Exception e) {
+                        throw new ExpressionEvaluationException(
+                                "Failed to read property '" + pd.getName() + "' from " + contextType.getName(), e);
+                    }
+                }
+            }
+            if (!boundVars.isEmpty()) {
+                map.putAll(boundVars);
+            }
+            return map;
         }
     }
 

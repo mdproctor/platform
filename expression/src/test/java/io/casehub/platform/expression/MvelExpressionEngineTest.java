@@ -94,4 +94,67 @@ class MvelExpressionEngineTest {
         CompiledExpression<?, ?> second = engine.compile("x - y", MAP_TYPE, Integer.class);
         assertThat(first).isNotSameAs(second);
     }
+
+    @Test
+    void compile_pojoContext_fieldAccess() {
+        CompiledExpression<TestPerson, String> expr =
+                engine.compile("name", TestPerson.class, String.class);
+        assertThat(expr.eval(new TestPerson("Alice", 30))).isEqualTo("Alice");
+    }
+
+    @Test
+    void compile_pojoContext_booleanExpression() {
+        CompiledExpression<TestPerson, Boolean> expr =
+                engine.compile("age > 20", TestPerson.class, Boolean.class);
+        assertThat(expr.eval(new TestPerson("Alice", 30))).isTrue();
+        assertThat(expr.eval(new TestPerson("Bob", 15))).isFalse();
+    }
+
+    @Test
+    void compile_pojoContext_withVariables() {
+        CompiledExpression<TestPerson, Boolean> expr =
+                engine.compile("name == $p0", TestPerson.class, Boolean.class,
+                               Map.of("$p0", "Alice"));
+        assertThat(expr.eval(new TestPerson("Alice", 30))).isTrue();
+        assertThat(expr.eval(new TestPerson("Bob", 30))).isFalse();
+    }
+
+    @Test
+    void compile_pojoContext_cachedSeparatelyFromMap() {
+        CompiledExpression<?, ?> mapExpr  = engine.compile("age > 20", MAP_TYPE, Boolean.class);
+        CompiledExpression<?, ?> pojoExpr = engine.compile("age > 20", TestPerson.class, Boolean.class);
+        assertThat(mapExpr).isNotSameAs(pojoExpr);
+    }
+
+    @Test
+    void compile_blockExpression_mapContext() {
+        CompiledExpression<Map<String, Object>, Integer> expr =
+                engine.compile("var threshold = 10; return x + threshold;", MAP_TYPE, Integer.class);
+        assertThat(expr.eval(Map.of("x", 5))).isEqualTo(15);
+    }
+
+    @Test
+    void compile_blockExpression_withControlFlow() {
+        CompiledExpression<Map<String, Object>, String> expr =
+                engine.compile(
+                        "var result = \"unknown\"; if (age > 18) { result = \"adult\"; } else { result = \"minor\"; } return result;",
+                        MAP_TYPE, String.class);
+        assertThat(expr.eval(Map.of("age", 25))).isEqualTo("adult");
+        assertThat(expr.eval(Map.of("age", 10))).isEqualTo("minor");
+    }
+
+    @Test
+    void compile_blockExpression_pojoContext() {
+        CompiledExpression<TestPerson, String> expr =
+                engine.compile("var greeting = \"Hello \"; return greeting + name;",
+                               TestPerson.class, String.class);
+        assertThat(expr.eval(new TestPerson("Alice", 30))).isEqualTo("Hello Alice");
+    }
+
+    @Test
+    void compile_singleExpression_noSemicolon_stillWorks() {
+        CompiledExpression<Map<String, Object>, Integer> expr =
+                engine.compile("x + y", MAP_TYPE, Integer.class);
+        assertThat(expr.eval(Map.of("x", 3, "y", 5))).isEqualTo(8);
+    }
 }
