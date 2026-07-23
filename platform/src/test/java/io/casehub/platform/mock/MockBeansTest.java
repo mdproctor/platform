@@ -60,12 +60,12 @@ class MockBeansTest {
 
     @Test
     void preferenceProvider_resolve_returns_preferences() {
-        assertNotNull(preferenceProvider.resolve(SettingsScope.of("acme/backend")));
+        assertNotNull(preferenceProvider.resolve(SettingsScope.of(TenancyConstants.DEFAULT_TENANT_ID, Path.parse("acme/backend"))));
     }
 
     @Test
     void preferenceProvider_asMap_returns_typed_values() {
-        Preferences prefs = preferenceProvider.resolve(SettingsScope.of("acme/backend"));
+        Preferences prefs = preferenceProvider.resolve(SettingsScope.of(TenancyConstants.DEFAULT_TENANT_ID, Path.parse("acme/backend")));
         assertEquals(42, prefs.asMap().get("test.count"));          // Integer
         assertEquals(Boolean.TRUE, prefs.asMap().get("test.flag")); // Boolean
         assertEquals("hello", prefs.asMap().get("test.label"));     // String
@@ -73,7 +73,7 @@ class MockBeansTest {
 
     @Test
     void preferenceProvider_typed_get_returns_parsed_value() {
-        Preferences prefs = preferenceProvider.resolve(SettingsScope.of("acme/backend"));
+        Preferences prefs = preferenceProvider.resolve(SettingsScope.of(TenancyConstants.DEFAULT_TENANT_ID, Path.parse("acme/backend")));
         record LabelPref(String value) implements io.casehub.platform.api.preferences.SingleValuePreference {}
         PreferenceKey<LabelPref> key = new PreferenceKey<>("test", "label",
                 new LabelPref("fallback"),
@@ -85,7 +85,7 @@ class MockBeansTest {
 
     @Test
     void preferenceProvider_getOrDefault_returns_parsed_value_when_configured() {
-        Preferences prefs = preferenceProvider.resolve(SettingsScope.of("acme/backend"));
+        Preferences prefs = preferenceProvider.resolve(SettingsScope.of(TenancyConstants.DEFAULT_TENANT_ID, Path.parse("acme/backend")));
         record LabelPref(String value) implements io.casehub.platform.api.preferences.SingleValuePreference {}
         PreferenceKey<LabelPref> key = new PreferenceKey<>("test", "label",
                 new LabelPref("fallback"),
@@ -95,7 +95,7 @@ class MockBeansTest {
 
     @Test
     void preferenceProvider_getOrDefault_returns_key_default_when_absent() {
-        Preferences prefs = preferenceProvider.resolve(SettingsScope.of("acme/backend"));
+        Preferences prefs = preferenceProvider.resolve(SettingsScope.of(TenancyConstants.DEFAULT_TENANT_ID, Path.parse("acme/backend")));
         record MissingPref(String value) implements io.casehub.platform.api.preferences.SingleValuePreference {}
         PreferenceKey<MissingPref> key = new PreferenceKey<>("test", "missing",
                 new MissingPref("fallback"),
@@ -108,7 +108,7 @@ class MockBeansTest {
         // parseValue() converts "42" to Integer(42) for asMap().
         // MapPreferences.get(key) only handles String — Integer falls through to null.
         // getOrDefault() then returns key.defaultValue().
-        Preferences prefs = preferenceProvider.resolve(SettingsScope.of("acme/backend"));
+        Preferences prefs = preferenceProvider.resolve(SettingsScope.of(TenancyConstants.DEFAULT_TENANT_ID, Path.parse("acme/backend")));
         assertEquals(42, prefs.asMap().get("test.count"));          // Integer in asMap ✓
         record CountPref(int value) implements SingleValuePreference {}
         PreferenceKey<CountPref> key = new PreferenceKey<>("test", "count",
