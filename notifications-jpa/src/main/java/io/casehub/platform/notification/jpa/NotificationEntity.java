@@ -6,7 +6,6 @@ import io.casehub.platform.api.notification.NotificationSeverity;
 import io.casehub.platform.api.notification.NotificationSource;
 import io.casehub.platform.api.notification.NotificationStatus;
 import io.casehub.platform.api.util.UUIDv7;
-import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -19,15 +18,15 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "notification",
-        indexes = {
-                @Index(name = "idx_notification_user_status_created",
-                        columnList = "user_id, tenancy_id, status, created_at DESC"),
-                @Index(name = "idx_notification_user_category_created",
-                        columnList = "user_id, tenancy_id, category, created_at DESC"),
-                @Index(name = "idx_notification_user_created",
-                        columnList = "user_id, tenancy_id, created_at")
-        })
-public class NotificationEntity extends PanacheEntityBase {
+       indexes = {
+               @Index(name = "idx_notification_user_status_created",
+                      columnList = "user_id, tenancy_id, status, created_at DESC"),
+               @Index(name = "idx_notification_user_category_created",
+                      columnList = "user_id, tenancy_id, category, created_at DESC"),
+               @Index(name = "idx_notification_user_created",
+                      columnList = "user_id, tenancy_id, created_at")
+       })
+public class NotificationEntity {
 
     @Id
     public String id;
@@ -79,31 +78,25 @@ public class NotificationEntity extends PanacheEntityBase {
     @Column(name = "dismissed_at")
     public Instant dismissedAt;
 
-    /**
-     * Build entity from input. Generates UUID v7 id, sets UNREAD status, captures createdAt.
-     */
     static NotificationEntity fromInput(NotificationInput input) {
         NotificationEntity entity = new NotificationEntity();
-        entity.id = UUIDv7.generate();
-        entity.userId = input.userId();
-        entity.tenancyId = input.tenancyId();
-        entity.title = input.title();
-        entity.body = input.body();
-        entity.category = input.category();
-        entity.severity = input.severity();
-        entity.actionUrl = input.actionUrl();
-        entity.sourceEventId = input.source().eventId();
+        entity.id               = UUIDv7.generate();
+        entity.userId           = input.userId();
+        entity.tenancyId        = input.tenancyId();
+        entity.title            = input.title();
+        entity.body             = input.body();
+        entity.category         = input.category();
+        entity.severity         = input.severity();
+        entity.actionUrl        = input.actionUrl();
+        entity.sourceEventId    = input.source().eventId();
         entity.sourceEntityType = input.source().entityType();
-        entity.sourceEntityId = input.source().entityId();
-        entity.sourceActorId = input.source().actorId();
-        entity.status = NotificationStatus.UNREAD;
-        entity.createdAt = Instant.now();
+        entity.sourceEntityId   = input.source().entityId();
+        entity.sourceActorId    = input.source().actorId();
+        entity.status           = NotificationStatus.UNREAD;
+        entity.createdAt        = Instant.now();
         return entity;
     }
 
-    /**
-     * Convert entity to domain record.
-     */
     Notification toNotification() {
         return new Notification(
                 id,

@@ -1,34 +1,27 @@
 package io.casehub.platform.subscription.jpa;
 
-import io.casehub.platform.api.notification.NotificationSeverity;
 import io.casehub.platform.api.expression.ExpressionEvaluator;
 import io.casehub.platform.api.expression.MvelExpressionEvaluator;
+import io.casehub.platform.api.notification.NotificationSeverity;
+import io.casehub.platform.api.subscription.NotificationTarget;
 import io.casehub.platform.api.subscription.NotificationTemplate;
-import io.casehub.platform.api.subscription.ReactiveSubscriptionStore;
 import io.casehub.platform.api.subscription.Subscription;
 import io.casehub.platform.api.subscription.SubscriptionInput;
 import io.casehub.platform.api.subscription.SubscriptionQuery;
 import io.casehub.platform.api.subscription.SubscriptionStore;
 import io.casehub.platform.api.subscription.SubscriptionStoreContractTest;
 import io.casehub.platform.api.subscription.SubscriptionUpdate;
-import io.casehub.platform.api.subscription.NotificationTarget;
 import io.casehub.platform.api.subscription.TargetType;
-import io.quarkus.hibernate.reactive.panache.Panache;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.vertx.RunOnVertxContext;
-import io.quarkus.test.vertx.UniAsserter;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * JPA subscription store tests — runs both contract tests (blocking SPI via
- * {@link SubscriptionStoreContractTest}) and reactive-specific tests against PostgreSQL
- * DevServices.
- */
 @QuarkusTest
 public class JpaSubscriptionStoreTest extends SubscriptionStoreContractTest {
 
@@ -36,7 +29,7 @@ public class JpaSubscriptionStoreTest extends SubscriptionStoreContractTest {
     SubscriptionStore blockingStore;
 
     @Inject
-    ReactiveSubscriptionStore reactiveStore;
+    EntityManager em;
 
     @Override
     protected SubscriptionStore store() {
@@ -44,142 +37,12 @@ public class JpaSubscriptionStoreTest extends SubscriptionStoreContractTest {
     }
 
     @Override
+    @Transactional
     protected void clearState() {
-        var context = io.smallrye.common.vertx.VertxContext.getOrCreateDuplicatedContext(
-                jakarta.enterprise.inject.spi.CDI.current().select(io.vertx.core.Vertx.class).get());
-        io.quarkus.vertx.core.runtime.context.VertxContextSafetyToggle.setContextSafe(context, true);
-        io.smallrye.mutiny.Uni.createFrom().deferred(() ->
-                        Panache.withTransaction(() -> SubscriptionEntity.deleteAll()))
-                .runSubscriptionOn(r -> context.runOnContext(v -> r.run()))
-                .subscribeAsCompletionStage()
-                .toCompletableFuture()
-                .join();
+        em.createQuery("DELETE FROM SubscriptionEntity").executeUpdate();
     }
 
-    // Reactive SPI Tests — run on Vert.x context with UniAsserter
-
-    @Test
-    @RunOnVertxContext
-    void reactive_store_persistsSubscription(UniAsserter asserter) {
-        var input = createTestInput("user-1", "tenant-1", "Reactive Sub", "work-item.created");
-        asserter.assertThat(
-                () -> Panache.withTransaction(() -> SubscriptionEntity.deleteAll())
-                        .chain(() -> reactiveStore.store(input)),
-                subscription -> {
-                    assertThat(subscription.id()).isNotNull();
-                    assertThat(subscription.name()).isEqualTo("Reactive Sub");
-                    assertThat(subscription.eventType()).isEqualTo("work-item.created");
-                    assertThat(subscription.enabled()).isTrue();
-                });
-    }
-
-    @Test
-    @RunOnVertxContext
-    void reactive_findById_returnsSubscription(UniAsserter asserter) {
-        var input = createTestInput("user-1", "tenant-1", "Find Me", "event-type");
-        asserter.assertThat(
-                () -> Panache.withTransaction(() -> SubscriptionEntity.deleteAll())
-                        .chain(() -> reactiveStore.store(input))
-                        .chain(sub -> reactiveStore.findById(sub.id(), "user-1", "tenant-1")),
-                found -> {
-                    assertThat(found).isPresent();
-                    assertThat(found.get().name()).isEqualTo("Find Me");
-                });
-    }
-
-    @Test
-    @RunOnVertxContext
-    void reactive_findById_wrongUser_returnsEmpty(UniAsserter asserter) {
-        var input = createTestInput("user-1", "tenant-1", "Title", "event-type");
-        asserter.assertThat(
-                () -> Panache.withTransaction(() -> SubscriptionEntity.deleteAll())
-                        .chain(() -> reactiveStore.store(input))
-                        .chain(sub -> reactiveStore.findById(sub.id(), "user-2", "tenant-1")),
-                found -> assertThat(found).isEmpty());
-    }
-
-    @Test
-    @RunOnVertxContext
-    void reactive_find_returnsPaginatedResults(UniAsserter asserter) {
-        asserter.assertThat(
-                () -> Panache.withTransaction(() -> SubscriptionEntity.deleteAll())
-                        .chain(() -> reactiveStore.store(createTestInput("user-1", "tenant-1", "S0", "event-type")))
-                        .chain(() -> reactiveStore.store(createTestInput("user-1", "tenant-1", "S1", "event-type")))
-                        .chain(() -> reactiveStore.store(createTestInput("user-1", "tenant-1", "S2", "event-type")))
-                        .chain(() -> reactiveStore.find(new SubscriptionQuery("user-1", "tenant-1", null, null, null, 2))),
-                page -> {
-                    assertThat(page.subscriptions()).hasSize(2);
-                    assertThat(page.nextCursor()).isNotNull();
-                });
-    }
-
-    @Test
-    @RunOnVertxContext
-    void reactive_update_changesName(UniAsserter asserter) {
-        var input = createTestInput("user-1", "tenant-1", "Old Name", "event-type");
-        asserter.assertThat(
-                () -> Panache.withTransaction(() -> SubscriptionEntity.deleteAll())
-                        .chain(() -> reactiveStore.store(input))
-                        .chain(sub -> reactiveStore.update(sub.id(), "user-1", "tenant-1",
-                                new SubscriptionUpdate("New Name", null, null, null, null, null, null))),
-                updated -> {
-                    assertThat(updated).isPresent();
-                    assertThat(updated.get().name()).isEqualTo("New Name");
-                    assertThat(updated.get().eventType()).isEqualTo("event-type");
-                });
-    }
-
-    @Test
-    @RunOnVertxContext
-    void reactive_update_wrongUser_returnsEmpty(UniAsserter asserter) {
-        var input = createTestInput("user-1", "tenant-1", "Title", "event-type");
-        asserter.assertThat(
-                () -> Panache.withTransaction(() -> SubscriptionEntity.deleteAll())
-                        .chain(() -> reactiveStore.store(input))
-                        .chain(sub -> reactiveStore.update(sub.id(), "user-2", "tenant-1",
-                                new SubscriptionUpdate("New", null, null, null, null, null, null))),
-                updated -> assertThat(updated).isEmpty());
-    }
-
-    @Test
-    @RunOnVertxContext
-    void reactive_delete_removesSubscription(UniAsserter asserter) {
-        var input = createTestInput("user-1", "tenant-1", "Title", "event-type");
-        asserter.assertThat(
-                () -> Panache.withTransaction(() -> SubscriptionEntity.deleteAll())
-                        .chain(() -> reactiveStore.store(input))
-                        .chain(sub -> reactiveStore.delete(sub.id(), "user-1", "tenant-1")),
-                deleted -> assertThat(deleted).isTrue());
-    }
-
-    @Test
-    @RunOnVertxContext
-    void reactive_delete_wrongUser_returnsFalse(UniAsserter asserter) {
-        var input = createTestInput("user-1", "tenant-1", "Title", "event-type");
-        asserter.assertThat(
-                () -> Panache.withTransaction(() -> SubscriptionEntity.deleteAll())
-                        .chain(() -> reactiveStore.store(input))
-                        .chain(sub -> reactiveStore.delete(sub.id(), "user-2", "tenant-1")),
-                deleted -> assertThat(deleted).isFalse());
-    }
-
-    @Test
-    @RunOnVertxContext
-    void reactive_findAllEnabled_returnsOnlyEnabled(UniAsserter asserter) {
-        var enabledInput = createTestInput("user-1", "tenant-1", "Enabled", "event-type");
-        var disabledInput = new SubscriptionInput("user-1", "tenant-1", "Disabled", "event-type", List.of(), List.of(new NotificationTarget(TargetType.USER, "user-1")), false, createTemplate(), false, null);
-        asserter.assertThat(
-                () -> Panache.withTransaction(() -> SubscriptionEntity.deleteAll())
-                        .chain(() -> reactiveStore.store(enabledInput))
-                        .chain(() -> reactiveStore.store(disabledInput))
-                        .chain(() -> reactiveStore.findAllEnabled().collect().asList()),
-                subscriptions -> {
-                    assertThat(subscriptions).hasSize(1);
-                    assertThat(subscriptions.get(0).name()).isEqualTo("Enabled");
-                });
-    }
-
-    // Entity mapping verification (blocking store — run on test thread)
+    // Entity mapping verification (blocking store)
 
     @Test
     void entity_preservesFilters() {
@@ -240,7 +103,7 @@ public class JpaSubscriptionStoreTest extends SubscriptionStoreContractTest {
 
         var newFilters = List.of(
                 (ExpressionEvaluator) new MvelExpressionEvaluator("newField != 'excluded'"));
-        var update = new SubscriptionUpdate(null, null, newFilters, null, null, null, null);
+        var update  = new SubscriptionUpdate(null, null, newFilters, null, null, null, null);
         var updated = blockingStore.update(subscription.id(), "user-1", "tenant-1", update);
 
         assertThat(updated).isPresent();
@@ -248,7 +111,7 @@ public class JpaSubscriptionStoreTest extends SubscriptionStoreContractTest {
         assertThat(updated.get().filters().get(0).type()).isEqualTo("mvel");
     }
 
-    // Cursor pagination verification (blocking store — run on test thread)
+    // Cursor pagination verification
 
     @Test
     void cursor_paginationCoversAllResults() {
@@ -256,12 +119,12 @@ public class JpaSubscriptionStoreTest extends SubscriptionStoreContractTest {
             blockingStore.store(createTestInput("user-1", "tenant-1", "S" + i, "event-type"));
         }
 
-        var allIds = new java.util.ArrayList<String>();
+        var    allIds = new java.util.ArrayList<String>();
         String cursor = null;
-        int pages = 0;
+        int    pages  = 0;
         do {
             var query = new SubscriptionQuery("user-1", "tenant-1", null, null, cursor, 2);
-            var page = blockingStore.find(query);
+            var page  = blockingStore.find(query);
             for (Subscription s : page.subscriptions()) {
                 allIds.add(s.id());
             }
@@ -278,8 +141,8 @@ public class JpaSubscriptionStoreTest extends SubscriptionStoreContractTest {
 
     private SubscriptionInput createTestInput(String ownerId, String tenancyId, String name, String eventType) {
         return new SubscriptionInput(ownerId, tenancyId, name, eventType,
-                List.of(), List.of(new NotificationTarget(TargetType.USER, ownerId)), false,
-                createTemplate(), true, null);
+                                     List.of(), List.of(new NotificationTarget(TargetType.USER, ownerId)), false,
+                                     createTemplate(), true, null);
     }
 
     private NotificationTemplate createTemplate() {

@@ -6,7 +6,7 @@ import io.casehub.platform.api.expression.ExpressionEvaluator;
 import io.casehub.platform.api.expression.MvelExpressionEvaluator;
 import io.casehub.platform.api.subscription.NotificationTarget;
 import io.casehub.platform.api.subscription.NotificationTemplate;
-import io.casehub.platform.api.subscription.ReactiveSubscriptionStore;
+import io.casehub.platform.api.subscription.SubscriptionStore;
 import io.casehub.platform.api.subscription.SubscriptionInput;
 import io.casehub.platform.api.subscription.SubscriptionScope;
 import io.casehub.platform.api.subscription.SubscriptionUpdate;
@@ -35,7 +35,7 @@ class SubscriptionResourceTest {
     FixedCurrentPrincipal principal;
 
     @Inject
-    ReactiveSubscriptionStore store;
+    SubscriptionStore store;
 
     @Inject
     InMemorySubscriptionStore inMemoryStore;
@@ -114,7 +114,7 @@ class SubscriptionResourceTest {
         );
         var input = new SubscriptionInput("user-1", TenancyConstants.DEFAULT_TENANT_ID, "Test subscription", "test.event.type", List.of(), List.of(new NotificationTarget(TargetType.USER, "user-1")), false, template, true, null
         );
-        store.store(input).await().indefinitely();
+        store.store(input);
 
         // When: list subscriptions
         given()
@@ -145,11 +145,11 @@ class SubscriptionResourceTest {
 
         var enabledInput = new SubscriptionInput("user-1", TenancyConstants.DEFAULT_TENANT_ID, "Enabled subscription", "test.enabled", List.of(), List.of(new NotificationTarget(TargetType.USER, "user-1")), false, template, true, null
         );
-        store.store(enabledInput).await().indefinitely();
+        store.store(enabledInput);
 
         var disabledInput = new SubscriptionInput("user-1", TenancyConstants.DEFAULT_TENANT_ID, "Disabled subscription", "test.disabled", List.of(), List.of(new NotificationTarget(TargetType.USER, "user-1")), false, template, false, null
         );
-        store.store(disabledInput).await().indefinitely();
+        store.store(disabledInput);
 
         // When: list with enabled=true filter
         given()
@@ -190,7 +190,7 @@ class SubscriptionResourceTest {
                 true,
                 null
             );
-            store.store(input).await().indefinitely();
+            store.store(input);
         }
 
         // When: list with limit=2
@@ -219,7 +219,7 @@ class SubscriptionResourceTest {
         );
         var input = new SubscriptionInput("user-1", TenancyConstants.DEFAULT_TENANT_ID, "Test subscription", "test.type", List.of(), List.of(new NotificationTarget(TargetType.USER, "user-1")), false, template, true, null
         );
-        var subscription = store.store(input).await().indefinitely();
+        var subscription = store.store(input);
 
         // When: get by id
         given()
@@ -248,7 +248,7 @@ class SubscriptionResourceTest {
         );
         var input = new SubscriptionInput("user-2", TenancyConstants.DEFAULT_TENANT_ID, "Test subscription", "test.type", List.of(), List.of(new NotificationTarget(TargetType.USER, "user-2")), false, template, true, null
         );
-        var subscription = store.store(input).await().indefinitely();
+        var subscription = store.store(input);
 
         // When: try to get with current principal (different user)
         given()
@@ -273,7 +273,7 @@ class SubscriptionResourceTest {
         );
         var input = new SubscriptionInput("user-1", TenancyConstants.DEFAULT_TENANT_ID, "Original name", "test.type", List.of(), List.of(new NotificationTarget(TargetType.USER, "user-1")), false, template, true, null
         );
-        var subscription = store.store(input).await().indefinitely();
+        var subscription = store.store(input);
 
         // When: update name
         var update = new SubscriptionUpdate(
@@ -335,7 +335,7 @@ class SubscriptionResourceTest {
         );
         var input = new SubscriptionInput("user-1", TenancyConstants.DEFAULT_TENANT_ID, "Test subscription", "test.type", List.of(), List.of(new NotificationTarget(TargetType.USER, "user-1")), false, template, true, null
         );
-        var subscription = store.store(input).await().indefinitely();
+        var subscription = store.store(input);
 
         // When: delete
         given()
@@ -376,7 +376,7 @@ class SubscriptionResourceTest {
         );
         var input = new SubscriptionInput("user-1", TenancyConstants.DEFAULT_TENANT_ID, "Test subscription", "test.type", List.of(), List.of(new NotificationTarget(TargetType.USER, "user-1")), false, template, false, null
         );
-        var subscription = store.store(input).await().indefinitely();
+        var subscription = store.store(input);
 
         // When: enable
         given()
@@ -404,7 +404,7 @@ class SubscriptionResourceTest {
         );
         var input = new SubscriptionInput("user-1", TenancyConstants.DEFAULT_TENANT_ID, "Test subscription", "test.type", List.of(), List.of(new NotificationTarget(TargetType.USER, "user-1")), false, template, true, null
         );
-        var subscription = store.store(input).await().indefinitely();
+        var subscription = store.store(input);
 
         // When: disable
         given()
@@ -501,7 +501,7 @@ class SubscriptionResourceTest {
     void list_systemScope_returnsTenantWide() {
         principal.setActorId("admin-1");
         principal.addGroup("subscription-admins");
-        store.store(createSystemInput("System Alert", "io.casehub.alert.triggered")).await().indefinitely();
+        store.store(createSystemInput("System Alert", "io.casehub.alert.triggered"));
 
         principal.setActorId("user-1");
         principal.setGroups(Set.of());
@@ -519,7 +519,7 @@ class SubscriptionResourceTest {
     void getById_systemScope_anyTenantUserCanRead() {
         principal.setActorId("admin-1");
         principal.addGroup("subscription-admins");
-        var sub = store.store(createSystemInput("System Alert", "io.casehub.alert.triggered")).await().indefinitely();
+        var sub = store.store(createSystemInput("System Alert", "io.casehub.alert.triggered"));
 
         principal.setActorId("user-1");
         principal.setGroups(Set.of());
@@ -535,7 +535,7 @@ class SubscriptionResourceTest {
     void update_systemScope_adminSucceeds() {
         principal.setActorId("admin-1");
         principal.addGroup("subscription-admins");
-        var sub = store.store(createSystemInput("System Alert", "io.casehub.alert.triggered")).await().indefinitely();
+        var sub = store.store(createSystemInput("System Alert", "io.casehub.alert.triggered"));
 
         given()
                 .contentType(ContentType.JSON)
@@ -550,7 +550,7 @@ class SubscriptionResourceTest {
     void update_systemScope_nonAdminForbidden() {
         principal.setActorId("admin-1");
         principal.addGroup("subscription-admins");
-        var sub = store.store(createSystemInput("System Alert", "io.casehub.alert.triggered")).await().indefinitely();
+        var sub = store.store(createSystemInput("System Alert", "io.casehub.alert.triggered"));
 
         principal.setActorId("user-1");
         principal.setGroups(Set.of());
@@ -567,7 +567,7 @@ class SubscriptionResourceTest {
     void delete_systemScope_adminSucceeds() {
         principal.setActorId("admin-1");
         principal.addGroup("subscription-admins");
-        var sub = store.store(createSystemInput("System Alert", "io.casehub.alert.triggered")).await().indefinitely();
+        var sub = store.store(createSystemInput("System Alert", "io.casehub.alert.triggered"));
 
         given()
                 .when().delete("/subscriptions/{id}", sub.id())
@@ -579,7 +579,7 @@ class SubscriptionResourceTest {
     void delete_systemScope_nonAdminForbidden() {
         principal.setActorId("admin-1");
         principal.addGroup("subscription-admins");
-        var sub = store.store(createSystemInput("System Alert", "io.casehub.alert.triggered")).await().indefinitely();
+        var sub = store.store(createSystemInput("System Alert", "io.casehub.alert.triggered"));
 
         principal.setActorId("user-1");
         principal.setGroups(Set.of());
@@ -594,7 +594,7 @@ class SubscriptionResourceTest {
     void enable_systemScope_nonAdminForbidden() {
         principal.setActorId("admin-1");
         principal.addGroup("subscription-admins");
-        var sub = store.store(createSystemInput("System Alert", "io.casehub.alert.triggered")).await().indefinitely();
+        var sub = store.store(createSystemInput("System Alert", "io.casehub.alert.triggered"));
 
         principal.setActorId("user-1");
         principal.setGroups(Set.of());

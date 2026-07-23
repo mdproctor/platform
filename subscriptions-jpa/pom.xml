@@ -13,9 +13,9 @@
     <artifactId>casehub-platform-subscriptions-jpa</artifactId>
     <packaging>jar</packaging>
     <name>CaseHub Platform Subscriptions JPA</name>
-    <description>JPA-backed SubscriptionStore and ReactiveSubscriptionStore. @ApplicationScoped — displaces
-        @DefaultBean no-ops. Hibernate Reactive Panache for reactive SPI, Vert.x context + await for blocking SPI.
-        Add as compile dep; consumers must add classpath:db/subscription/migration to quarkus.flyway.locations.
+    <description>JPA-backed SubscriptionStore. @ApplicationScoped — displaces @DefaultBean no-op.
+        Hibernate ORM + @Transactional. Add as compile dep; consumers must add
+        classpath:db/subscription/migration to quarkus.flyway.locations.
         Do NOT add casehub-platform-subscriptions-inmem alongside this in production scope.</description>
 
     <dependencies>
@@ -30,12 +30,7 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-hibernate-reactive-panache</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-reactive-pg-client</artifactId>
-            <optional>true</optional>
+            <artifactId>quarkus-hibernate-orm</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -67,11 +62,7 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-test-vertx</artifactId>
-            <scope>test</scope>
-        </dependency>
+
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit</artifactId>

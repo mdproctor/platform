@@ -4,8 +4,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
- * Blocking subscription persistence SPI. Implementations must provide both this interface
- * and {@link ReactiveSubscriptionStore} natively — no bridge pattern.
+ * Subscription persistence SPI — single blocking interface, no reactive counterpart.
  *
  * <p><strong>CDI Events:</strong> Non-no-op implementations must fire:
  * <ul>

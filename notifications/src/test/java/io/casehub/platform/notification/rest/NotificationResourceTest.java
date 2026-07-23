@@ -6,7 +6,7 @@ import io.casehub.platform.api.notification.NotificationInput;
 import io.casehub.platform.api.notification.NotificationSeverity;
 import io.casehub.platform.api.notification.NotificationSource;
 import io.casehub.platform.api.notification.NotificationStatus;
-import io.casehub.platform.api.notification.ReactiveNotificationStore;
+import io.casehub.platform.api.notification.NotificationStore;
 import io.casehub.platform.notification.inmem.InMemoryNotificationStore;
 import io.casehub.platform.testing.FixedCurrentPrincipal;
 import io.quarkus.test.junit.QuarkusTest;
@@ -25,7 +25,7 @@ class NotificationResourceTest {
     FixedCurrentPrincipal principal;
 
     @Inject
-    ReactiveNotificationStore store;
+    NotificationStore store;
 
     @Inject
     InMemoryNotificationStore inMemoryStore;
@@ -52,7 +52,7 @@ class NotificationResourceTest {
             "/work-items/wi-1",
             source
         );
-        store.store(input).await().indefinitely();
+        store.store(input);
 
         // When: list notifications
         given()
@@ -82,7 +82,7 @@ class NotificationResourceTest {
             null,
             source
         );
-        var n1 = store.store(input1).await().indefinitely();
+        var n1 = store.store(input1);
 
         var input2 = new NotificationInput(
             "user-1",
@@ -94,8 +94,8 @@ class NotificationResourceTest {
             null,
             source
         );
-        var n2 = store.store(input2).await().indefinitely();
-        store.markRead(n2.id(), "user-1", TenancyConstants.DEFAULT_TENANT_ID).await().indefinitely();
+        var n2 = store.store(input2);
+        store.markRead(n2.id(), "user-1", TenancyConstants.DEFAULT_TENANT_ID);
 
         // When: list with status=UNREAD filter
         given()
@@ -122,7 +122,7 @@ class NotificationResourceTest {
             null,
             source
         );
-        store.store(input1).await().indefinitely();
+        store.store(input1);
 
         var input2 = new NotificationInput(
             "user-1",
@@ -134,7 +134,7 @@ class NotificationResourceTest {
             null,
             source
         );
-        store.store(input2).await().indefinitely();
+        store.store(input2);
 
         // When: list with category filter
         given()
@@ -162,7 +162,7 @@ class NotificationResourceTest {
                 null,
                 source
             );
-            store.store(input).await().indefinitely();
+            store.store(input);
         }
 
         // When: list with limit=2
@@ -191,7 +191,7 @@ class NotificationResourceTest {
                 null,
                 source
             );
-            store.store(input).await().indefinitely();
+            store.store(input);
         }
 
         // When: get unread count
@@ -218,7 +218,7 @@ class NotificationResourceTest {
             null,
             source
         );
-        var notification = store.store(input).await().indefinitely();
+        var notification = store.store(input);
 
         // When: mark as read
         given()
@@ -255,7 +255,7 @@ class NotificationResourceTest {
             null,
             source
         );
-        var notification = store.store(input).await().indefinitely();
+        var notification = store.store(input);
 
         // When: try to mark as read with current principal (different tenant)
         given()
@@ -279,7 +279,7 @@ class NotificationResourceTest {
             null,
             source
         );
-        var notification = store.store(input).await().indefinitely();
+        var notification = store.store(input);
 
         // When: try to mark as read with current principal (different user)
         given()
@@ -303,7 +303,7 @@ class NotificationResourceTest {
             null,
             source
         );
-        var notification = store.store(input).await().indefinitely();
+        var notification = store.store(input);
 
         // When: dismiss
         given()
@@ -341,7 +341,7 @@ class NotificationResourceTest {
                 null,
                 source
             );
-            store.store(input).await().indefinitely();
+            store.store(input);
         }
 
         // When: mark all as read

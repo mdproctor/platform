@@ -4,8 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Blocking notification persistence SPI. Implementations must provide both this interface
- * and {@link ReactiveNotificationStore} natively — no bridge pattern.
+ * Notification persistence SPI — single blocking interface, no reactive counterpart.
  *
  * <p><strong>CDI Events:</strong> Non-no-op implementations must fire:
  * <ul>

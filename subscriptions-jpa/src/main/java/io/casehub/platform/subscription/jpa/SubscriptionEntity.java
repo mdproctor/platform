@@ -12,7 +12,6 @@ import io.casehub.platform.api.subscription.Subscription;
 import io.casehub.platform.api.subscription.SubscriptionInput;
 import io.casehub.platform.api.subscription.SubscriptionScope;
 import io.casehub.platform.api.util.UUIDv7;
-import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -31,11 +30,11 @@ import java.util.Map;
                @Index(name = "idx_subscription_enabled",
                       columnList = "enabled")
        })
-public class SubscriptionEntity extends PanacheEntityBase {
+public class SubscriptionEntity {
 
     private static final TypeReference<List<Map<String, String>>> FILTER_LIST_TYPE =
             new TypeReference<>() {};
-    private static final TypeReference<List<NotificationTarget>> TARGET_LIST_TYPE     =
+    private static final TypeReference<List<NotificationTarget>>  TARGET_LIST_TYPE =
             new TypeReference<>() {};
 
     @Id
@@ -70,30 +69,25 @@ public class SubscriptionEntity extends PanacheEntityBase {
     @Column(nullable = false, length = 10)
     public String  scope;
 
-
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
     public Instant updatedAt;
 
-    /**
-     * Build entity from input. Generates UUID v7 id, captures createdAt and updatedAt.
-     * ObjectMapper passed in because entities cannot use CDI injection.
-     */
     static SubscriptionEntity fromInput(SubscriptionInput input, ObjectMapper mapper) {
         SubscriptionEntity entity = new SubscriptionEntity();
-        entity.id              = UUIDv7.generate();
-        entity.ownerId         = input.ownerId();
-        entity.tenancyId       = input.tenancyId();
-        entity.name            = input.name();
-        entity.eventType       = input.eventType();
-        entity.filtersJson     = serializeFilters(input.filters(), mapper);
-        entity.targetsJson     = serializeTargets(input.targets(), mapper);
-        entity.includeActor    = input.includeActor();
-        entity.templateJson    = serializeTemplate(input.template(), mapper);
-        entity.enabled         = input.enabled();
-        entity.scope           = input.scope().name();
+        entity.id           = UUIDv7.generate();
+        entity.ownerId      = input.ownerId();
+        entity.tenancyId    = input.tenancyId();
+        entity.name         = input.name();
+        entity.eventType    = input.eventType();
+        entity.filtersJson  = serializeFilters(input.filters(), mapper);
+        entity.targetsJson  = serializeTargets(input.targets(), mapper);
+        entity.includeActor = input.includeActor();
+        entity.templateJson = serializeTemplate(input.template(), mapper);
+        entity.enabled      = input.enabled();
+        entity.scope        = input.scope().name();
         Instant now = Instant.now();
         entity.createdAt = now;
         entity.updatedAt = now;
@@ -106,8 +100,8 @@ public class SubscriptionEntity extends PanacheEntityBase {
         }
         try {
             var entries = filters.stream()
-                    .map(f -> Map.of("type", f.type(), "expression", extractExpression(f)))
-                    .toList();
+                                 .map(f -> Map.of("type", f.type(), "expression", extractExpression(f)))
+                                 .toList();
             return mapper.writeValueAsString(entries);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to serialize filters", e);
@@ -121,21 +115,21 @@ public class SubscriptionEntity extends PanacheEntityBase {
         try {
             List<Map<String, String>> entries = mapper.readValue(json, FILTER_LIST_TYPE);
             return List.copyOf(entries.stream()
-                    .map(entry -> (ExpressionEvaluator) switch (entry.get("type")) {
-                        case "mvel" -> new MvelExpressionEvaluator(entry.get("expression"));
-                        case "jq" -> new JQExpressionEvaluator(entry.get("expression"));
-                        default -> throw new IllegalStateException(
-                                "Unknown filter type: " + entry.get("type"));
-                    })
-                    .toList());
+                                      .map(entry -> (ExpressionEvaluator) switch (entry.get("type")) {
+                                          case "mvel" -> new MvelExpressionEvaluator(entry.get("expression"));
+                                          case "jq" -> new JQExpressionEvaluator(entry.get("expression"));
+                                          default -> throw new IllegalStateException(
+                                                  "Unknown filter type: " + entry.get("type"));
+                                      })
+                                      .toList());
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to deserialize filters", e);
         }
     }
 
     private static String extractExpression(ExpressionEvaluator evaluator) {
-        if (evaluator instanceof MvelExpressionEvaluator m) return m.expression();
-        if (evaluator instanceof JQExpressionEvaluator j) return j.expression();
+        if (evaluator instanceof MvelExpressionEvaluator m) {return m.expression();}
+        if (evaluator instanceof JQExpressionEvaluator j) {return j.expression();}
         throw new IllegalArgumentException("Unknown evaluator type: " + evaluator.type());
     }
 
@@ -171,9 +165,6 @@ public class SubscriptionEntity extends PanacheEntityBase {
         }
     }
 
-    /**
-     * Convert entity to domain record.
-     */
     Subscription toSubscription(ObjectMapper mapper) {
         return new Subscription(
                 id,
