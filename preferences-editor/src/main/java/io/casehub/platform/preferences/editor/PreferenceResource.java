@@ -43,19 +43,23 @@ public class PreferenceResource {
         if (name == null || name.isBlank()) {
             return Response.status(400).entity("name is required for single-delete").build();
         }
+        if (namespace == null || namespace.isBlank()) {
+            return Response.status(400).entity("namespace is required for single-delete").build();
+        }
         Path scope = parseScopePath(scopeParam);
         store.delete(principal.tenancyId(), scope, namespace, name, subKey != null ? subKey : "");
-        return Response.noContent().build();
-    }
+        return Response.noContent().build();}
 
     @DELETE
     @jakarta.ws.rs.Path("/by-namespace")
     public Response deleteNamespace(@QueryParam("scope") String scopeParam,
                                     @QueryParam("namespace") String namespace) {
+        if (namespace == null || namespace.isBlank()) {
+            return Response.status(400).entity("namespace is required").build();
+        }
         Path scope = parseScopePath(scopeParam);
         store.deleteAll(principal.tenancyId(), scope, namespace);
-        return Response.noContent().build();
-    }
+        return Response.noContent().build();}
 
     @GET
     public List<PreferenceRecord> list(@QueryParam("scope") String scopeParam) {

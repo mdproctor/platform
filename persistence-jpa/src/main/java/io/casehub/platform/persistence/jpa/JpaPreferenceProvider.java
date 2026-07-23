@@ -31,6 +31,25 @@ import java.util.Map;
 @ApplicationScoped
 public class JpaPreferenceProvider implements PreferenceProvider {
 
+    /**
+     * Returns ancestor scope strings shortest-first (root first), ending with the target scope.
+     */
+    private static List<String> ancestors(final Path path) {
+        final List<String> result  = new ArrayList<>();
+        Path               current = path;
+        while (current != null) {
+            result.add(0, current.value());
+            current = current.parent();
+        }
+        // Root scope ("") is always the base ancestor — preferences stored there apply universally.
+        // Path.parent() returns null for single-segment paths (not root), so root is not naturally
+        // reached by the walk above for non-root paths.
+        if (path.depth() > 0) {
+            result.add(0, Path.root().value());
+        }
+        return result;
+    }
+
     @Override
     @Transactional(TxType.SUPPORTS)
     public Preferences resolve(final SettingsScope scope) {
@@ -53,22 +72,6 @@ public class JpaPreferenceProvider implements PreferenceProvider {
             merged.put(mapKey, row.value);
         }
 
-        return new MapPreferences(merged);}
-
-    /** Returns ancestor scope strings shortest-first (root first), ending with the target scope. */
-    private static List<String> ancestors(final Path path) {
-        final List<String> result = new ArrayList<>();
-        Path current = path;
-        while (current != null) {
-            result.add(0, current.value());
-            current = current.parent();
-        }
-        // Root scope ("") is always the base ancestor — preferences stored there apply universally.
-        // Path.parent() returns null for single-segment paths (not root), so root is not naturally
-        // reached by the walk above for non-root paths.
-        if (path.depth() > 0) {
-            result.add(0, Path.root().value());
-        }
-        return result;
+        return new MapPreferences(merged);
     }
 }
