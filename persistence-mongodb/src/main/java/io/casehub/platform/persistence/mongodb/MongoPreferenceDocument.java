@@ -29,6 +29,8 @@ public class MongoPreferenceDocument extends PanacheMongoEntityBase {
 
     @BsonId
     public String id;
+    public String tenancyId;
+
 
     public String scope;
     public String namespace;
@@ -37,14 +39,13 @@ public class MongoPreferenceDocument extends PanacheMongoEntityBase {
     public String subKey = "";
     public String value;
 
-    /** Constructs the compound natural key used as {@code _id}. */
-    public static String compoundId(final String scope, final String namespace,
+    public static String compoundId(final String tenancyId, final String scope, final String namespace,
                                     final String name, final String subKey) {
-        return scope + "|" + namespace + "|" + name + "|" + subKey;
+        return tenancyId + "|" + scope + "|" + namespace + "|" + name + "|" + subKey;
     }
 
-    static List<MongoPreferenceDocument> findByScopes(final List<String> scopes) {
-        if (scopes.isEmpty()) return Collections.emptyList();
-        return list(Filters.in("scope", scopes));
+    static List<MongoPreferenceDocument> findByScopes(final String tenancyId, final List<String> scopes) {
+        if (scopes.isEmpty()) {return Collections.emptyList();}
+        return list(Filters.and(Filters.eq("tenancyId", tenancyId), Filters.in("scope", scopes)));
     }
 }

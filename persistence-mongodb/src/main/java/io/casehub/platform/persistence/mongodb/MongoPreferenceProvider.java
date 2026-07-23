@@ -36,8 +36,8 @@ public class MongoPreferenceProvider implements PreferenceProvider {
 
     @Override
     public Preferences resolve(final SettingsScope scope) {
-        final List<String> ancestors = ancestors(scope.scope());
-        final List<MongoPreferenceDocument> docs = new ArrayList<>(MongoPreferenceDocument.findByScopes(ancestors));
+        final List<String>                  ancestors = ancestors(scope.scope());
+        final List<MongoPreferenceDocument> docs      = new ArrayList<>(MongoPreferenceDocument.findByScopes(scope.tenancyId(), ancestors));
 
         final Map<String, Integer> scopeOrder = new HashMap<>();
         for (int i = 0; i < ancestors.size(); i++) {
@@ -50,13 +50,12 @@ public class MongoPreferenceProvider implements PreferenceProvider {
         final Map<String, Object> merged = new HashMap<>();
         for (final MongoPreferenceDocument doc : docs) {
             final String mapKey = doc.subKey.isEmpty()
-                    ? doc.namespace + "." + doc.name
-                    : doc.namespace + "." + doc.name + "." + doc.subKey;
+                                  ? doc.namespace + "." + doc.name
+                                  : doc.namespace + "." + doc.name + "." + doc.subKey;
             merged.put(mapKey, doc.value);
         }
 
-        return new MapPreferences(merged);
-    }
+        return new MapPreferences(merged);}
 
     /** Returns ancestor scope strings shortest-first (root first), ending with the target scope. */
     private static List<String> ancestors(final Path path) {
