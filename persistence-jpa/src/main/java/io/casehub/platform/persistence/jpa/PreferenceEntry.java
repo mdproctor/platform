@@ -16,11 +16,11 @@ import java.util.List;
 
 @Entity
 @Table(
-    name = "platform_preference",
-    uniqueConstraints = @UniqueConstraint(
-        name = "uq_platform_preference",
-        columnNames = {"scope", "namespace", "pref_name", "sub_key"}),
-    indexes = @Index(name = "idx_platform_preference_scope", columnList = "scope")
+        name = "platform_preference",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_platform_preference",
+                columnNames = {"tenancy_id", "scope", "namespace", "pref_name", "sub_key"}),
+        indexes = @Index(name = "idx_platform_preference_scope", columnList = "scope")
 )
 public class PreferenceEntry extends PanacheEntityBase {
 
@@ -29,6 +29,9 @@ public class PreferenceEntry extends PanacheEntityBase {
     @SequenceGenerator(name = "platform_preference_seq", sequenceName = "platform_preference_seq",
                        allocationSize = 50)
     public Long id;
+
+    @Column(name = "tenancy_id", nullable = false, length = 100)
+    public String tenancyId;
 
     @Column(nullable = false, length = 500)
     public String scope;
@@ -39,15 +42,17 @@ public class PreferenceEntry extends PanacheEntityBase {
     @Column(name = "pref_name", nullable = false, length = 100)
     public String name;
 
-    /** Empty string for single-value preferences; sub-key for multi-value. */
+    /**
+     * Empty string for single-value preferences; sub-key for multi-value.
+     */
     @Column(name = "sub_key", nullable = false, length = 100)
     public String subKey = "";
 
     @Column(name = "pref_value", nullable = false, length = 4000)
     public String value;
 
-    static List<PreferenceEntry> findByScopes(final List<String> scopes) {
-        if (scopes.isEmpty()) return Collections.emptyList();
-        return list("scope in ?1", scopes);
+    static List<PreferenceEntry> findByScopes(final String tenancyId, final List<String> scopes) {
+        if (scopes.isEmpty()) {return Collections.emptyList();}
+        return list("tenancyId = ?1 and scope in ?2", tenancyId, scopes);
     }
 }
