@@ -54,6 +54,7 @@
         <module>platform-view</module>
         <module>platform-view-inmem</module>
         <module>platform-view-jpa</module>
+        <module>preferences-editor</module>
     </modules>
 
     <properties>
