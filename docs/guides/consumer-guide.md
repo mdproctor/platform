@@ -43,7 +43,7 @@ Each displaces its `@DefaultBean` mock automatically -- no exclusion config need
 
 | Artifact | What it provides |
 |----------|------------------|
-| `casehub-platform-notifications` | REST + SSE presentation layer -- list, mark-read, dismiss, unread-count |
+| `casehub-platform-notifications` | REST + push presentation layer -- list, mark-read, dismiss, unread-count |
 | `casehub-platform-notifications-inmem` | In-memory notification store (test/ephemeral) |
 | `casehub-platform-notifications-jpa` | JPA notification store (production) -- keyset pagination, retention scheduler |
 | `casehub-platform-notification-dispatch` | Three-path delivery pipeline (digest/suppress/immediate); `DigestFlushScheduler`; `DeliveryRetryProcessor` |
@@ -305,7 +305,7 @@ Rete-style event routing: `DataSource<T>` ingests objects, `ObjectType<T>` discr
 
 ### Notifications and Subscriptions
 
-Domain modules produce `SubscribableEvent` objects into the notification DataSource. The subscription engine evaluates them against the alpha network, fires `SubscriptionMatched`, and the dispatch pipeline handles delivery (immediate, digest, or suppressed). REST + SSE endpoints expose notifications to clients.
+Domain modules produce `SubscribableEvent` objects into the notification DataSource. The subscription engine evaluates them against the alpha network, fires `SubscriptionMatched`, and the dispatch pipeline handles delivery (immediate, digest, or suppressed). REST endpoints and WebSocket push (via `EventBroadcaster`) expose notifications to clients.
 
 **SubscribableEvent interface:** Compile-time contract for subscription POJOs. Must implement `type()` (reverse-DNS event type string, e.g. `"io.casehub.work.workitem.completed"`) and `tenancyId()`. POJOs not implementing this interface are silently rejected by the subscription engine.
 
