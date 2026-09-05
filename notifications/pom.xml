@@ -39,6 +39,12 @@
             <artifactId>quarkus-arc</artifactId>
         </dependency>
 
+        <!-- Push delivery via EventBroadcaster -->
+        <dependency>
+            <groupId>io.casehub</groupId>
+            <artifactId>casehub-pages-push</artifactId>
+        </dependency>
+
         <!-- Quarkus Scheduler for SSE sweep -->
         <dependency>
             <groupId>io.quarkus</groupId>

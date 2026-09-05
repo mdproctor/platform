@@ -413,7 +413,7 @@ The `<=` check (not `==`) prevents clock regression — after sequence wraparoun
 
 ### 3. SSE stale emitter sweep
 
-**Problem:** `NotificationSseResource` cleans up closed emitters lazily — only when the next event tries to send. Stale emitters accumulate indefinitely between events for low-traffic users.
+**Problem:** `NotificationPushService` cleans up closed emitters lazily — only when the next event tries to send. Stale emitters accumulate indefinitely between events for low-traffic users.
 
 **Fix:** Add a `@Scheduled(every = "60s")` sweep that removes emitters where `isClosed()` returns true. Same `removeEmitter()` logic already exists.
 

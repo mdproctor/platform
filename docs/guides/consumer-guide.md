@@ -354,7 +354,7 @@ Domain modules produce `SubscribableEvent` objects into the notification DataSou
 
 ### SessionIsolator
 
-`SessionIsolator` SPI — virtual-thread-safe Hibernate session isolation. Wraps JPA calls that would otherwise fail on virtual threads due to Hibernate's thread-local session management. Use for any blocking JPA operations in `@RunOnVirtualThread` contexts (e.g. `NotificationSseResource`).
+`SessionIsolator` SPI — virtual-thread-safe Hibernate session isolation. Wraps JPA calls that would otherwise fail on virtual threads due to Hibernate's thread-local session management. Use for any blocking JPA operations in `@RunOnVirtualThread` contexts (e.g. `NotificationPushService`).
 
 ### Access Control
 

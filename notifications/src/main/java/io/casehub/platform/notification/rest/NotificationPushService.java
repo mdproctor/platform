@@ -29,9 +29,9 @@ import java.util.concurrent.Executors;
 
 @ApplicationScoped
 @Path("/notifications/stream")
-public class NotificationSseResource {
+public class NotificationPushService {
 
-    private static final Logger          LOG              = Logger.getLogger(NotificationSseResource.class);
+    private static final Logger          LOG              = Logger.getLogger(NotificationPushService.class);
     private static final ExecutorService VIRTUAL_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
 
     private final ConcurrentHashMap<String, Set<EmitterWithContext>> connections = new ConcurrentHashMap<>();
@@ -41,7 +41,7 @@ public class NotificationSseResource {
     private final SessionIsolator                                    sessionIsolator;
 
     @Inject
-    public NotificationSseResource(
+    public NotificationPushService(
             NotificationStore store,
             CurrentPrincipal principal,
             ObjectMapper objectMapper,

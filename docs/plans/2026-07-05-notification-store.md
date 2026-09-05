@@ -187,7 +187,7 @@
 
 - `NotificationResource`: `@Path("/notifications") @ApplicationScoped`. Injects `ReactiveNotificationStore` and `CurrentPrincipal`. All methods return `Uni<>` (RESTEasy Reactive on event loop). `list()` → `GET /notifications` with `@QueryParam` for status, category, cursor, limit. `unreadCount()` → `GET /notifications/unread-count`. `markRead()` → `PATCH /notifications/{id}/read`. `dismiss()` → `PATCH /notifications/{id}/dismiss`. `markAllRead()` → `POST /notifications/mark-all-read`. Principal provides userId and tenancyId — never from request params.
 
-- `NotificationSseResource`: `@Path("/notifications/stream") @ApplicationScoped`. `ConcurrentHashMap<String, Set<SseEventSink>>` keyed by `tenancyId::userId`. Captures userId/tenancyId from `CurrentPrincipal` at stream establishment. `@ObservesAsync` handlers for `NotificationCreated`, `NotificationStatusChanged`, `AllNotificationsRead` push to matching user connections. Emitter lifecycle: `onClose`/`onError` callbacks remove from map. `AllNotificationsRead` handler queries `unreadCount()` from store (doesn't assume zero).
+- `NotificationPushService`: `@Path("/notifications/stream") @ApplicationScoped`. `ConcurrentHashMap<String, Set<SseEventSink>>` keyed by `tenancyId::userId`. Captures userId/tenancyId from `CurrentPrincipal` at stream establishment. `@ObservesAsync` handlers for `NotificationCreated`, `NotificationStatusChanged`, `AllNotificationsRead` push to matching user connections. Emitter lifecycle: `onClose`/`onError` callbacks remove from map. `AllNotificationsRead` handler queries `unreadCount()` from store (doesn't assume zero).
 
 - `NotificationResourceTest`: `@QuarkusTest`. Uses REST Assured for HTTP assertions. Tests all endpoints with `FixedCurrentPrincipal`. Verifies 200/404 responses, JSON structure, tenant isolation (different tenant → 404).
 
@@ -200,7 +200,7 @@
 - [ ] **Step 5: Implement `NotificationResource`** — `@Path("/notifications")`, all REST endpoints using `ReactiveNotificationStore`
 - [ ] **Step 6: Run tests — verify pass**
 - [ ] **Step 7: Write `NotificationSseResourceTest`** — SSE connection test, event push test
-- [ ] **Step 8: Implement `NotificationSseResource`** — SSE endpoint, CDI event observers, connection management, principal capture
+- [ ] **Step 8: Implement `NotificationPushService`** — SSE endpoint, CDI event observers, connection management, principal capture
 - [ ] **Step 9: Run `mvn --batch-mode -pl notifications test`** — verify pass
 - [ ] **Step 10: Commit** — `feat(#135): notification REST + SSE — endpoints and real-time push`
 
