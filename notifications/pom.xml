@@ -45,12 +45,6 @@
             <artifactId>casehub-pages-push</artifactId>
         </dependency>
 
-        <!-- Quarkus Scheduler for SSE sweep -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-scheduler</artifactId>
-        </dependency>
-
         <!-- Test dependencies -->
         <dependency>
             <groupId>io.casehub</groupId>
