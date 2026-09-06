@@ -49,5 +49,12 @@ public enum EndpointProtocol {
      * Qhorus channel dispatch API invocation mechanism.
      * Use {@link EndpointPropertyKeys#URL} for the Qhorus REST base URL.
      */
-    QHORUS
-}
+    QHORUS,
+
+    /**
+     * Scenario automation engine invocation.
+     * Use {@link EndpointPropertyKeys#URL} for the pages GraphQL endpoint URL.
+     */
+    SCENARIO
+
+    }
