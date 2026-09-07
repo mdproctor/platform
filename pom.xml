@@ -12,37 +12,59 @@
     <modules>
         <module>platform-api</module>
         <module>agent-api</module>
+        <module>platform-core</module>
         <module>platform</module>
+        <module>platform-spring</module>
         <module>testing</module>
+        <module>agent-runtime-core</module>
         <module>agent-runtime</module>
+        <module>config-core</module>
         <module>config</module>
         <module>oidc</module>
+        <module>expression-core</module>
         <module>expression</module>
         <module>persistence-jpa</module>
         <module>persistence-mongodb</module>
+        <module>endpoints-memory-core</module>
         <module>endpoints-memory</module>
+        <module>endpoints-config-core</module>
         <module>endpoints-config</module>
         <module>datasource-alpha</module>
+        <module>datasource-inmem-core</module>
         <module>datasource-inmem</module>
         <module>datasource-jpa</module>
         <module>scim</module>
+        <module>identity-core</module>
         <module>identity</module>
+        <module>agent-claude-core</module>
         <module>agent-claude</module>
+        <module>agent-openai-core</module>
         <module>agent-openai</module>
+        <module>agent-codex-core</module>
         <module>agent-codex</module>
+        <module>agent-gemini-core</module>
         <module>agent-gemini</module>
+        <module>agent-gemini-cli-core</module>
         <module>agent-gemini-cli</module>
+        <module>agent-langchain4j-core</module>
         <module>agent-langchain4j</module>
+        <module>memory-inmem</module>
+        <module>acl-inmem-core</module>
         <module>acl-inmem</module>
         <module>acl-jpa</module>
         <module>acl-admin</module>
         <module>acl-worker</module>
+        <module>notifications-inmem-core</module>
         <module>notifications-inmem</module>
         <module>notifications-jpa</module>
+        <module>notifications-core</module>
         <module>notifications</module>
+        <module>notification-settings-inmem-core</module>
         <module>notification-settings-inmem</module>
         <module>notification-settings-jpa</module>
+        <module>subscriptions-core</module>
         <module>subscriptions</module>
+        <module>subscriptions-inmem-core</module>
         <module>subscriptions-inmem</module>
         <module>subscriptions-jpa</module>
         <module>streams-kafka</module>
@@ -50,25 +72,38 @@
         <module>streams-webhook</module>
         <module>streams-poll</module>
         <module>streams-camel</module>
+        <module>governance-core</module>
         <module>governance</module>
         <module>credentials-quarkus</module>
+        <module>delivery-channel-inmem-core</module>
         <module>delivery-channel-inmem</module>
+        <module>notification-dispatch-core</module>
         <module>notification-dispatch</module>
+        <module>digest-inmem-core</module>
         <module>digest-inmem</module>
         <module>digest-jpa</module>
+        <module>delivery-tracking-inmem-core</module>
         <module>delivery-tracking-inmem</module>
         <module>delivery-tracking-jpa</module>
+        <module>platform-view-core</module>
         <module>platform-view</module>
         <module>platform-view-inmem</module>
         <module>platform-view-jpa</module>
+        <module>platform-view-spring</module>
+        <module>preferences-editor-core</module>
         <module>preferences-editor</module>
+        <module>agent-router-core</module>
         <module>agent-router</module>
+        <module>agent-gate-core</module>
         <module>agent-gate</module>
         <module>graphql</module>
         <module>graphql-client</module>
+        <module>mcp-core</module>
         <module>mcp</module>
         <module>callback-api</module>
+        <module>callback-inmem-core</module>
         <module>callback-inmem</module>
+        <module>callback-core</module>
         <module>callback</module>
         <module>graphql-generator</module>
         <module>callback-generator</module>
@@ -81,6 +116,8 @@
         <!-- ts-core excluded — dev.tsj:compiler-backend-jvm not in any public/CI repository -->
         <module>platform-pdf</module>
         <module>platform-signing</module>
+        <module>spring-testing</module>
+        <module>spring-generator</module>
     </modules>
 
     <properties>
@@ -90,6 +127,7 @@
         <compiler-plugin.version>3.15.0</compiler-plugin.version>
         <jandex-maven-plugin.version>3.3.1</jandex-maven-plugin.version>
         <langchain4j.version>1.14.1</langchain4j.version>
+        <spring-boot.version>3.4.5</spring-boot.version>
     </properties>
 
     <dependencyManagement>
@@ -105,6 +143,13 @@
                 <groupId>io.quarkus.platform</groupId>
                 <artifactId>quarkus-bom</artifactId>
                 <version>${quarkus.platform.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

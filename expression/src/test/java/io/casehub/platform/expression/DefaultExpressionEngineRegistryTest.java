@@ -16,7 +16,7 @@ class DefaultExpressionEngineRegistryTest {
 
     @BeforeEach
     void setUp() {
-        registry = new DefaultExpressionEngineRegistry();
+        registry = new DefaultExpressionEngineRegistry(java.util.List.of());
     }
 
     @Test

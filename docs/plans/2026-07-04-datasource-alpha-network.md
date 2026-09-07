@@ -595,8 +595,8 @@ git commit -m "feat(platform#NNN): NoOpDataSourceRegistry @DefaultBean"
 - Create: `datasource-inmem/src/main/java/io/casehub/platform/datasource/memory/FanOutProcessor.java`
 - Create: `datasource-inmem/src/main/java/io/casehub/platform/datasource/memory/InMemoryDataSourceRegistry.java`
 - Modify: `pom.xml` (root) â€” add `datasource-inmem` to `<modules>`
-- Test: `datasource-inmem/src/test/java/io/casehub/platform/datasource/memory/AlphaDataSourceTest.java`
-- Test: `datasource-inmem/src/test/java/io/casehub/platform/datasource/memory/InMemoryDataSourceRegistryTest.java`
+- Test: `../../datasource-inmem-core/src/test/java/io/casehub/platform/datasource/memory/AlphaDataSourceTest.java`
+- Test: `../../datasource-inmem-core/src/test/java/io/casehub/platform/datasource/memory/InMemoryDataSourceRegistryTest.java`
 
 **Interfaces:**
 - Consumes: All SPI types from Task 1
@@ -858,7 +858,7 @@ git commit -m "feat(platform#NNN): InMemoryDataSourceRegistry + alpha network â€
 
 **Files:**
 - Create: `platform/src/main/java/io/casehub/platform/datasource/DataSourceRouter.java`
-- Test: `datasource-inmem/src/test/java/io/casehub/platform/datasource/memory/DataSourceRouterTest.java`
+- Test: `../../datasource-inmem/src/test/java/io/casehub/platform/datasource/memory/DataSourceRouterTest.java`
 
 **Interfaces:**
 - Consumes: `DataSourceRegistry` (injected), `DataSourceRegistered` (CDI event), `CloudEvent` (CDI event), `DataSourceDescriptor.acceptedEventTypes()`

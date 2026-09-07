@@ -352,7 +352,7 @@ git commit -m "refactor(#192): replace notificationId with sourceId + sourceType
 
 **Files:**
 - Modify: `delivery-tracking-inmem/src/main/java/io/casehub/platform/delivery/tracking/inmem/InMemoryDeliveryAttemptStore.java`
-- Test: `delivery-tracking-inmem/src/test/java/io/casehub/platform/delivery/tracking/inmem/InMemoryDeliveryAttemptStoreTest.java`
+- Test: `../../delivery-tracking-inmem-core/src/test/java/io/casehub/platform/delivery/tracking/inmem/InMemoryDeliveryAttemptStoreTest.java`
 
 **Interfaces:**
 - Consumes: `DeliveryAttempt(id, sourceId, sourceType, channelId, ...)` from Task 1
@@ -767,12 +767,12 @@ git commit -m "refactor(#192): JPA store + V3002 migration for sourceId/sourceTy
 - Modify: `notification-dispatch/src/main/java/io/casehub/platform/notification/dispatch/EngagementRecorder.java`
 - Modify: `notification-dispatch/src/main/java/io/casehub/platform/notification/dispatch/EngagementCallbackResource.java`
 - Modify: `notification-dispatch/src/main/java/io/casehub/platform/notification/dispatch/DeliveryRetryProcessor.java`
-- Test: `notification-dispatch/src/test/java/io/casehub/platform/notification/dispatch/DeliveryTrackerTest.java`
-- Test: `notification-dispatch/src/test/java/io/casehub/platform/notification/dispatch/NotificationDispatcherTest.java`
-- Test: `notification-dispatch/src/test/java/io/casehub/platform/notification/dispatch/InAppEngagementBridgeTest.java`
-- Test: `notification-dispatch/src/test/java/io/casehub/platform/notification/dispatch/EngagementRecorderTest.java`
+- Test: `../../notification-dispatch-core/src/test/java/io/casehub/platform/notification/dispatch/DeliveryTrackerTest.java`
+- Test: `../../notification-dispatch-core/src/test/java/io/casehub/platform/notification/dispatch/NotificationDispatcherTest.java`
+- Test: `../../notification-dispatch-core/src/test/java/io/casehub/platform/notification/dispatch/InAppEngagementBridgeTest.java`
+- Test: `../../notification-dispatch-core/src/test/java/io/casehub/platform/notification/dispatch/EngagementRecorderTest.java`
 - Test: `notification-dispatch/src/test/java/io/casehub/platform/notification/dispatch/EngagementCallbackResourceTest.java`
-- Test: `notification-dispatch/src/test/java/io/casehub/platform/notification/dispatch/DeliveryRetryProcessorTest.java`
+- Test: `../../notification-dispatch-core/src/test/java/io/casehub/platform/notification/dispatch/DeliveryRetryProcessorTest.java`
 
 **Interfaces:**
 - Consumes: `DeliveryAttempt`, `EngagementEvent`, `DeliverySourceType`, `DeliveryAttemptStore` from Task 1

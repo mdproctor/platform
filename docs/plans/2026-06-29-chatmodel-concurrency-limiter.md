@@ -410,7 +410,7 @@ Three-path release ensures no permit leaks.
 - Modify: `agent-langchain4j/src/main/java/io/casehub/platform/agent/langchain4j/ChatModelAgentProvider.java`
 - Modify: `agent-langchain4j/src/main/java/io/casehub/platform/agent/langchain4j/ChatModelAgentSession.java`
 - Modify: `agent-langchain4j/src/test/java/io/casehub/platform/agent/langchain4j/ChatModelAgentProviderTest.java`
-- Modify: `agent-langchain4j/src/test/java/io/casehub/platform/agent/langchain4j/ChatModelAgentSessionTest.java`
+- Modify: `../../agent-langchain4j-core/src/test/java/io/casehub/platform/agent/langchain4j/ChatModelAgentSessionTest.java`
 
 **Interfaces:**
 - Consumes: `ChatModelAgentProvider.semaphore` field (from Task 1)

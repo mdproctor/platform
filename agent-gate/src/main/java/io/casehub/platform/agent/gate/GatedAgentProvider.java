@@ -2,11 +2,9 @@ package io.casehub.platform.agent.gate;
 
 import io.casehub.platform.agent.AgentEvent;
 import io.casehub.platform.agent.AgentProvider;
-import io.casehub.platform.agent.AgentRateLimitException;
 import io.casehub.platform.agent.AgentSession;
 import io.casehub.platform.agent.AgentSessionConfig;
 import io.casehub.platform.agent.AgentSessionInit;
-import io.casehub.platform.agent.AgentSessionLimitException;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.annotation.PostConstruct;
@@ -90,13 +88,13 @@ public class GatedAgentProvider implements AgentProvider {
             return delegate.invoke(config);
         }
         return Multi.createFrom().<AgentEvent>deferred(() -> {
-            acquireAll(strategies, acquireTimeout);
+            AdmissionUtils.acquireAll(strategies, acquireTimeout);
             try {
                 Multi<AgentEvent> result = delegate.invoke(config);
                 return result.onTermination()
-                        .invoke(() -> releaseAll(strategies));
+                        .invoke(() -> AdmissionUtils.releaseAll(strategies));
             } catch (Exception e) {
-                releaseAll(strategies);
+                AdmissionUtils.releaseAll(strategies);
                 throw e;
             }
         }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
@@ -107,7 +105,7 @@ public class GatedAgentProvider implements AgentProvider {
         if (!active) {
             return delegate.openSession(init);
         }
-        acquireAll(strategies, acquireTimeout);
+        AdmissionUtils.acquireAll(strategies, acquireTimeout);
         try {
             AgentSession session = delegate.openSession(init);
             long id = registry.nextId();
@@ -116,49 +114,8 @@ public class GatedAgentProvider implements AgentProvider {
             registry.register(id, gated);
             return gated;
         } catch (Exception e) {
-            releaseAll(strategies);
+            AdmissionUtils.releaseAll(strategies);
             throw e;
         }
-    }
-
-    static void acquireAll(List<AdmissionStrategy> strategies,
-                            Duration timeout) {
-        long deadlineNanos = System.nanoTime() + timeout.toNanos();
-        for (int i = 0; i < strategies.size(); i++) {
-            long remainingNanos = deadlineNanos - System.nanoTime();
-            Duration remaining = remainingNanos > 0
-                    ? Duration.ofNanos(remainingNanos) : Duration.ZERO;
-            try {
-                if (!strategies.get(i).tryAcquire(remaining)) {
-                    rollbackPrior(strategies, i);
-                    throw exceptionFor(strategies.get(i));
-                }
-            } catch (InterruptedException e) {
-                rollbackPrior(strategies, i);
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(
-                        "Interrupted during admission acquisition", e);
-            }
-        }
-    }
-
-    static void releaseAll(List<AdmissionStrategy> strategies) {
-        for (int i = strategies.size() - 1; i >= 0; i--) {
-            strategies.get(i).release();
-        }
-    }
-
-    private static void rollbackPrior(List<AdmissionStrategy> strategies,
-                                       int failedIndex) {
-        for (int j = failedIndex - 1; j >= 0; j--) {
-            strategies.get(j).rollback();
-        }
-    }
-
-    private static RuntimeException exceptionFor(AdmissionStrategy strategy) {
-        if (strategy instanceof ConcurrencyStrategy) {
-            return new AgentSessionLimitException(0);
-        }
-        return new AgentRateLimitException(0);
     }
 }

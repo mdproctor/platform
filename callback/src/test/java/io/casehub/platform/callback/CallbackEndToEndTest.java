@@ -1,7 +1,5 @@
 package io.casehub.platform.callback;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -47,8 +45,7 @@ class CallbackEndToEndTest {
     void setUp() {
         wireMock.resetAll();
         registry = new InMemoryCallbackRegistry();
-        invoker = new CallbackInvoker();
-        invoker.policyEnforcer = new DefaultPolicyEnforcer();
+        invoker = new CallbackInvoker(new DefaultPolicyEnforcer());
     }
 
     @Test

@@ -32,11 +32,11 @@
 **Files:**
 - Create: `digest-inmem/pom.xml`
 - Create: `digest-inmem/src/main/java/io/casehub/platform/delivery/digest/inmem/InMemoryDigestBuffer.java`
-- Create: `digest-inmem/src/test/java/io/casehub/platform/delivery/digest/inmem/InMemoryDigestBufferTest.java`
+- Create: `../../digest-inmem-core/src/test/java/io/casehub/platform/delivery/digest/inmem/InMemoryDigestBufferTest.java`
 - Delete: `notification-dispatch/src/main/java/io/casehub/platform/notification/dispatch/InMemoryDigestBuffer.java`
 - Delete: `notification-dispatch/src/test/java/io/casehub/platform/notification/dispatch/InMemoryDigestBufferTest.java`
 - Modify: `notification-dispatch/pom.xml` — add `digest-inmem` test dependency
-- Modify: `notification-dispatch/src/test/java/io/casehub/platform/notification/dispatch/DigestFlushSchedulerTest.java` — update import
+- Modify: `../../notification-dispatch-core/src/test/java/io/casehub/platform/notification/dispatch/DigestFlushSchedulerTest.java` — update import
 - Modify: `pom.xml` (parent) — add `<module>digest-inmem</module>`
 
 **Interfaces:**
@@ -341,7 +341,7 @@ Add after existing test dependencies:
 
 - [ ] **Step 6: Update DigestFlushSchedulerTest import**
 
-In `notification-dispatch/src/test/java/io/casehub/platform/notification/dispatch/DigestFlushSchedulerTest.java`, change the import:
+In `../../notification-dispatch-core/src/test/java/io/casehub/platform/notification/dispatch/DigestFlushSchedulerTest.java`, change the import:
 
 From:
 ```java

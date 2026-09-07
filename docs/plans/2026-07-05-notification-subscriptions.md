@@ -313,7 +313,7 @@ feat(platform#142): NoOp + InMemory SubscriptionStore implementations
 - Create: `subscriptions/src/main/java/io/casehub/platform/subscription/engine/EventTypeObjectType.java`
 - Create: `subscriptions/src/main/java/io/casehub/platform/subscription/engine/ConstraintCompiler.java`
 - Create: `subscriptions/src/main/java/io/casehub/platform/subscription/engine/TemplateResolver.java`
-- Create: `subscriptions/src/test/java/io/casehub/platform/subscription/engine/EventTypeObjectTypeTest.java`
+- Create: `../../subscriptions-core/src/test/java/io/casehub/platform/subscription/engine/EventTypeObjectTypeTest.java`
 - Create: `subscriptions/src/test/java/io/casehub/platform/subscription/engine/ConstraintCompilerTest.java`
 - Create: `subscriptions/src/test/java/io/casehub/platform/subscription/engine/TemplateResolverTest.java`
 - Modify: `pom.xml` (parent — add `subscriptions` module)

@@ -21,7 +21,7 @@
 **Files:**
 - Modify: `platform-api/src/main/java/io/casehub/platform/api/preferences/PreferenceSchemaRegistry.java`
 - Modify: `preferences-editor/src/main/java/io/casehub/platform/preferences/editor/InMemoryPreferenceSchemaRegistry.java`
-- Modify: `preferences-editor/src/test/java/io/casehub/platform/preferences/editor/InMemoryPreferenceSchemaRegistryTest.java`
+- Modify: `../../preferences-editor-core/src/test/java/io/casehub/platform/preferences/editor/InMemoryPreferenceSchemaRegistryTest.java`
 
 **Interfaces:**
 - Consumes: nothing new

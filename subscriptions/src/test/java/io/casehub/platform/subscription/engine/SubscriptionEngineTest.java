@@ -68,8 +68,8 @@ class SubscriptionEngineTest {
             return CompletableFuture.completedFuture(event);
         });
 
-        var exprRegistry = new io.casehub.platform.expression.DefaultExpressionEngineRegistry();
-        exprRegistry.register(new io.casehub.platform.expression.MvelExpressionEngine());
+        var exprRegistry = new io.casehub.platform.expression.DefaultExpressionEngineRegistry(
+                java.util.List.of(new io.casehub.platform.expression.MvelExpressionEngine()));
         engine = new SubscriptionEngine(registry, subStore, matchEvent, exprRegistry);
     }
 
