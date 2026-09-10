@@ -96,7 +96,7 @@
 - Create: `notifications-inmem/pom.xml`
 - Create: `notifications-inmem/src/main/java/io/casehub/platform/notification/inmem/InMemoryNotificationStore.java`
 - Create: `notifications-inmem/src/main/java/io/casehub/platform/notification/inmem/InMemoryReactiveNotificationStore.java`
-- Create: `notifications-inmem/src/test/java/io/casehub/platform/notification/inmem/InMemoryNotificationStoreTest.java`
+- Create: `../../notifications-inmem-core/src/test/java/io/casehub/platform/notification/inmem/InMemoryNotificationStoreTest.java`
 - Modify: `pom.xml` (parent — add `<module>notifications-inmem</module>`)
 
 **Interfaces:**

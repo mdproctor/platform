@@ -130,7 +130,7 @@ feat(platform#130,#128): VerificationMethodType constants, @ActorDIDSource quali
 **Files:**
 - Create: `identity/src/main/java/io/casehub/platform/identity/CdiPriorityUtils.java`
 - Modify: `identity/src/main/java/io/casehub/platform/identity/CompositeDIDResolver.java`
-- Test: `identity/src/test/java/io/casehub/platform/identity/CompositeDIDResolverTest.java` (existing — verify no regression)
+- Test: `../../identity-core/src/test/java/io/casehub/platform/identity/CompositeDIDResolverTest.java` (existing — verify no regression)
 
 **Interfaces:**
 - Consumes: nothing
@@ -205,7 +205,7 @@ refactor(platform#128): extract CdiPriorityUtils from CompositeDIDResolver
 **Files:**
 - Create: `identity/src/main/java/io/casehub/platform/identity/MulticodecKeyType.java`
 - Modify: `identity/src/main/java/io/casehub/platform/identity/KeyDIDResolver.java`
-- Modify: `identity/src/test/java/io/casehub/platform/identity/KeyDIDResolverTest.java`
+- Modify: `../../identity-core/src/test/java/io/casehub/platform/identity/KeyDIDResolverTest.java`
 
 **Interfaces:**
 - Consumes: `VerificationMethodType.ED25519`, `VerificationMethodType.P256` (from Task 1)
@@ -565,7 +565,7 @@ feat(platform#130): KeyDIDResolver multicodec dispatch — varint decoding, P-25
 
 **Files:**
 - Create: `identity/src/main/java/io/casehub/platform/identity/CompositeActorDIDProvider.java`
-- Create: `identity/src/test/java/io/casehub/platform/identity/CompositeActorDIDProviderTest.java`
+- Create: `../../identity-core/src/test/java/io/casehub/platform/identity/CompositeActorDIDProviderTest.java`
 
 **Interfaces:**
 - Consumes: `ActorDIDProvider` (SPI with `invalidate()` from Task 1), `CdiPriorityUtils.toSortedList()` (from Task 2), `@ActorDIDSource` (from Task 1)
@@ -573,7 +573,7 @@ feat(platform#130): KeyDIDResolver multicodec dispatch — varint decoding, P-25
 
 - [ ] **Step 1: Write CompositeActorDIDProvider tests**
 
-Create `identity/src/test/java/io/casehub/platform/identity/CompositeActorDIDProviderTest.java`:
+Create `../../identity-core/src/test/java/io/casehub/platform/identity/CompositeActorDIDProviderTest.java`:
 
 ```java
 package io.casehub.platform.identity;
@@ -759,7 +759,7 @@ feat(platform#128): CompositeActorDIDProvider — iterates @ActorDIDSource provi
 - Modify: `identity/src/main/java/io/casehub/platform/identity/ConfiguredActorDIDProvider.java`
 - Modify: `identity/src/main/java/io/casehub/platform/identity/ScimActorDIDProvider.java`
 - Move: `identity/src/main/java/io/casehub/platform/identity/NoOpActorDIDProvider.java` → `platform/src/main/java/io/casehub/platform/identity/NoOpActorDIDProvider.java`
-- Create: `identity/src/test/java/io/casehub/platform/identity/ScimActorDIDProviderUnconfiguredTest.java`
+- Create: `../../identity-core/src/test/java/io/casehub/platform/identity/ScimActorDIDProviderUnconfiguredTest.java`
 
 **Interfaces:**
 - Consumes: `@ActorDIDSource` (Task 1), `CompositeActorDIDProvider` (Task 4)

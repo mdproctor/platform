@@ -19,6 +19,11 @@
     <dependencies>
         <dependency>
             <groupId>io.casehub</groupId>
+            <artifactId>casehub-platform-agent-gemini-cli-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.casehub</groupId>
             <artifactId>casehub-platform-agent-api</artifactId>
             <version>${project.version}</version>
         </dependency>

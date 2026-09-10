@@ -20,6 +20,11 @@
     <dependencies>
         <dependency>
             <groupId>io.casehub</groupId>
+            <artifactId>casehub-platform-identity-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.casehub</groupId>
             <artifactId>casehub-platform-api</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -31,40 +36,9 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-config-yaml</artifactId>
         </dependency>
-        <!-- Jackson for did:web JSON document parsing -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-jackson</artifactId>
-        </dependency>
-        <!-- JBoss logging -->
-        <dependency>
-            <groupId>org.jboss.logging</groupId>
-            <artifactId>jboss-logging</artifactId>
-        </dependency>
-        <!-- Mutiny for ReactiveAgentIdentityVerificationService -->
-        <dependency>
-            <groupId>io.smallrye.reactive</groupId>
-            <artifactId>mutiny</artifactId>
-        </dependency>
+        <!-- jackson and jboss-logging come transitively from identity-core -->
 
-        <!-- Test -->
-        <dependency>
-            <groupId>io.casehub</groupId>
-            <artifactId>casehub-platform</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.wiremock</groupId>
-            <artifactId>wiremock</artifactId>
-            <version>3.13.0</version>
-            <scope>test</scope>
-        </dependency>
+        <!-- No tests remain in this module — all moved to identity-core -->
     </dependencies>
 
     <build>

@@ -34,10 +34,9 @@ class EngagementCallbackResourceTest {
     void setUp() {
         store = new InMemoryDeliveryAttemptStore(10000);
         firedEvents = new ArrayList<>();
-        var enabledProvider = EngagementRecorderTest.providerWith(
+        var enabledProvider = providerWith(
                 PlatformPreferenceKeys.ENGAGEMENT_ENABLED, BooleanPreference.of(true));
-        recorder = new EngagementRecorder(store,
-                new EngagementRecorderTest.CapturingEngagementEvent(firedEvents), enabledProvider);
+        recorder = new EngagementRecorder(store, firedEvents::add, enabledProvider);
     }
 
     @Test
@@ -192,13 +191,16 @@ class EngagementCallbackResourceTest {
     }
 
     private static PreferenceProvider enabledProvider() {
-        return EngagementRecorderTest.providerWith(
-                PlatformPreferenceKeys.ENGAGEMENT_ENABLED, BooleanPreference.of(true));
+        return providerWith(PlatformPreferenceKeys.ENGAGEMENT_ENABLED, BooleanPreference.of(true));
     }
 
     private static PreferenceProvider disabledProvider() {
-        return EngagementRecorderTest.providerWith(
-                PlatformPreferenceKeys.ENGAGEMENT_ENABLED, BooleanPreference.of(false));
+        return providerWith(PlatformPreferenceKeys.ENGAGEMENT_ENABLED, BooleanPreference.of(false));
+    }
+
+    private static PreferenceProvider providerWith(io.casehub.platform.api.preferences.PreferenceKey<?> key,
+                                                    io.casehub.platform.api.preferences.SingleValuePreference value) {
+        return scope -> new io.casehub.platform.api.preferences.MapPreferences(Map.of(key.qualifiedName(), value));
     }
 
     private CurrentPrincipal fixedPrincipal(String tenancyId) {

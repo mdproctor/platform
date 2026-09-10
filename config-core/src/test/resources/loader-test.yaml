@@ -1,0 +1,7 @@
+entries:
+  - devtown.globalDefault: "true"
+  - scope: casehubio/devtown
+    devtown.humanApprovalThreshold: "500"
+    devtown.securityReviewRequired: "false"
+  - scope: casehubio/devtown/pr-review
+    devtown.humanApprovalThreshold: "100"

@@ -4,6 +4,7 @@ import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.platform.api.notification.settings.NotificationPreferenceStore;
 import io.casehub.platform.api.notification.settings.NotificationPreferenceUpdate;
 import io.casehub.platform.api.notification.settings.NotificationPreferences;
+import io.casehub.platform.notification.PreferenceValidator;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;

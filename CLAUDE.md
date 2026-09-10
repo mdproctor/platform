@@ -51,6 +51,19 @@ mvn --batch-mode deploy -DskipTests   # CI only — requires GITHUB_TOKEN
 
 ## Modules
 
+### Core Module Architecture
+
+Every CDI-coupled module has a `-core` counterpart containing framework-neutral POJOs with constructor injection. Core modules have zero CDI, zero Spring imports. Quarkus modules retain existing artifact names and depend on their core. Spring auto-configuration modules (`-spring`) are generated from Quarkus `@Produces` via `spring-generator`.
+
+| Pattern | Core Module | Quarkus Module | Spring Module |
+|---------|-------------|----------------|---------------|
+| @DefaultBean | POJO in platform-core | @Produces @DefaultBean | @Bean @ConditionalOnMissingBean |
+| @ApplicationScoped | Constructor-injected POJO | @Produces @ApplicationScoped | @Bean via @AutoConfiguration |
+| Event.fire() | Consumer\<T\> callback | CDI Event\<T\> | ApplicationEventPublisher |
+| Instance\<T\> | List\<T\> constructor param | Collected from Instance\<T\> | Collected from ObjectProvider\<T\> |
+
+New modules: `platform-core`, `platform-spring`, `spring-testing`, `spring-generator`, `platform-view-core`, `platform-view-spring`, `expression-core`, `governance-core`, `identity-core`, `agent-runtime-core`, `agent-claude-core`, `agent-openai-core`, `agent-codex-core`, `agent-gemini-core`, `agent-gemini-cli-core`, `agent-router-core`, `agent-gate-core`, `agent-langchain4j-core`, `notifications-inmem-core`, `notification-settings-inmem-core`, `delivery-tracking-inmem-core`, `digest-inmem-core`, `delivery-channel-inmem-core`, `notification-dispatch-core`, `datasource-inmem-core`, `endpoints-memory-core`, `acl-inmem-core`, `callback-inmem-core`, `callback-core`, `config-core`, `endpoints-config-core`, `preferences-editor-core`, `subscriptions-inmem-core`, `subscriptions-core`, `mcp-core`, `notifications-core`
+
 | Module | Artifact | Purpose |
 |--------|----------|---------|
 | `platform-api/` | `casehub-platform-api` | Pure Java SPIs — zero deps |

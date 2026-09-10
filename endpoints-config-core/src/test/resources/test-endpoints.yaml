@@ -1,0 +1,19 @@
+endpoints:
+  - path: external/salesforce/prod
+    tenancyId: tenant-a
+    type: WORKER
+    protocol: HTTP
+    properties:
+      url: https://salesforce-v1.example.com/api
+    credentialRef: sf-bearer-token
+    capabilities:
+      - SEND
+      - QUERY
+  - path: casehubio/workers/crm
+    tenancyId: tenant-b
+    type: AGENT
+    protocol: HTTP
+    properties:
+      url: https://crm.example.com
+    capabilities:
+      - SEND

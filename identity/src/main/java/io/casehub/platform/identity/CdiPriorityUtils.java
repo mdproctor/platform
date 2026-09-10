@@ -5,11 +5,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-final class CdiPriorityUtils {
+public final class CdiPriorityUtils {
 
     private CdiPriorityUtils() {}
 
-    static <T> List<T> toSortedList(Instance<T> instance) {
+    public static <T> List<T> toSortedList(Instance<T> instance) {
         var list = new ArrayList<Instance.Handle<T>>();
         instance.handles().forEach(list::add);
         list.sort(Comparator.comparingInt(CdiPriorityUtils::priorityOf));
