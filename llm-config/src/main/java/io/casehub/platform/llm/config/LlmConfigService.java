@@ -4,13 +4,14 @@ import io.casehub.platform.api.credentials.LlmCredentialStore;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.platform.api.model.MutableModelRegistry;
-import io.casehub.platform.api.preferences.PreferenceStore;
 import io.casehub.platform.api.path.Path;
+import io.casehub.platform.api.preferences.PreferenceStore;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,13 +30,16 @@ public class LlmConfigService implements LlmConfigApi {
     private final LlmCredentialStore credentialStore;
     private final PreferenceStore preferenceStore;
     private final Map<String, VendorClient> clientsByVendor;
+    private final List<CloudModelSource>    cloudSources;
+
 
     @Inject
     LlmConfigService(CurrentPrincipal principal,
                       MutableModelRegistry registry,
                       LlmCredentialStore credentialStore,
                       PreferenceStore preferenceStore,
-                      @Any Instance<VendorClient> vendorClients) {
+                      @Any Instance<VendorClient> vendorClients,
+                      @Any Instance<CloudModelSource> cloudModelSources) {
         this.principal = principal;
         this.credentialStore = credentialStore;
         this.preferenceStore = preferenceStore;
@@ -44,13 +48,18 @@ public class LlmConfigService implements LlmConfigApi {
         for (VendorClient client : vendorClients) {
             clientsByVendor.put(client.vendorKey(), client);
         }
+        this.cloudSources = new ArrayList<>();
+        for (CloudModelSource cs : cloudModelSources) {
+            this.cloudSources.add(cs);
+        }
     }
 
     LlmConfigService(CurrentPrincipal principal,
                       ConfiguredModelSourceManager sourceManager,
                       LlmCredentialStore credentialStore,
                       PreferenceStore preferenceStore,
-                      List<VendorClient> vendorClients) {
+                      List<VendorClient> vendorClients,
+                      List<CloudModelSource> cloudModelSources) {
         this.principal = principal;
         this.sourceManager = sourceManager;
         this.credentialStore = credentialStore;
@@ -59,6 +68,7 @@ public class LlmConfigService implements LlmConfigApi {
         for (VendorClient client : vendorClients) {
             clientsByVendor.put(client.vendorKey(), client);
         }
+        this.cloudSources = cloudModelSources != null ? new ArrayList<>(cloudModelSources) : new ArrayList<>();
     }
 
     @Override
@@ -142,6 +152,12 @@ public class LlmConfigService implements LlmConfigApi {
         removeProviderIndex(tenancyId, vendorKey);
         LOG.infof("Unconfigured LLM provider: %s", providerId);
     }
+
+    @Override
+    public List<CloudSourceStatus> cloudSourceStatus() {
+        return cloudSources.stream().map(CloudModelSource::status).toList();
+    }
+
 
     private void persistProviderConfig(String tenancyId, String vendorKey,
                                        String credentialRef, String displayName) {

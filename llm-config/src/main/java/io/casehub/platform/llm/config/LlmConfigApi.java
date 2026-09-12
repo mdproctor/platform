@@ -22,4 +22,8 @@ public interface LlmConfigApi {
 
     @PlatformMutation("Remove a provider configuration and deregister its ModelSource")
     void unconfigure(String providerId);
+
+    @PlatformQuery("List cloud model source status — active, inactive, or error with guidance")
+    List<CloudSourceStatus> cloudSourceStatus();
+
 }
