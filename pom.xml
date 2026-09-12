@@ -117,6 +117,7 @@
         <module>platform-pdf</module>
         <module>platform-signing</module>
         <module>llm-config</module>
+        <module>llm-config-vertex</module>
         <module>spring-testing</module>
         <module>spring-generator</module>
     </modules>
