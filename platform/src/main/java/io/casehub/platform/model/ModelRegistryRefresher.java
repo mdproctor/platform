@@ -10,8 +10,9 @@ import jakarta.enterprise.event.Event;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import java.util.List;
 import org.jboss.logging.Logger;
+
+import java.util.List;
 
 @ApplicationScoped
 public class ModelRegistryRefresher {
@@ -33,17 +34,20 @@ public class ModelRegistryRefresher {
     }
 
     void refreshAll() {
-        for (ModelSource source : sources) {
+        var sortedSources = new java.util.ArrayList<ModelSource>();
+        sources.forEach(sortedSources::add);
+        sortedSources.sort(java.util.Comparator.comparingInt(ModelSource::priority));
+
+        for (ModelSource source : sortedSources) {
             try {
                 List<ModelDescriptor> models = source.refresh();
-                var delta = registry.replaceSource(source.sourceId(), source.priority(), models);
+                var                   delta  = registry.replaceSource(source.sourceId(), source.priority(), models);
                 if (delta.hasChanges()) {
                     catalogChanged.fire(new ModelCatalogChangedEvent(
-                        source.sourceId(), delta.addedIds(), delta.removedIds(), delta.updatedIds()));
+                            source.sourceId(), delta.addedIds(), delta.removedIds(), delta.updatedIds()));
                 }
             } catch (Exception e) {
                 LOG.warnf("Model source '%s' refresh failed: %s", source.sourceId(), e.getMessage());
             }
-        }
-    }
+        }}
 }
