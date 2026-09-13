@@ -10,7 +10,7 @@ class ModelDescriptorTest {
 
     private ModelDescriptor descriptor(CostTier cost, String authMethod) {
         return new ModelDescriptor(
-            "claude-sonnet-5", "claude-sonnet-5", "claude", "anthropic", "claude",
+            "claude-sonnet-5", "claude-sonnet-5", "claude", null, "anthropic", "claude",
             "Claude Sonnet 5", ModelTier.STANDARD,
             Set.of(ModelCapabilities.TEXT, ModelCapabilities.VISION),
             200000, 16384, ModelLocality.CLOUD, cost, authMethod, Map.of());
@@ -19,7 +19,7 @@ class ModelDescriptorTest {
     @Test
     void requiredFields_throwOnNull() {
         assertThatThrownBy(() -> new ModelDescriptor(
-            null, "id", "claude", "anthropic", "claude", "name",
+            null, "id", "claude", null, "anthropic", "claude", "name",
             ModelTier.STANDARD, Set.of(), 200000, 16384,
             ModelLocality.CLOUD, null, null, null))
             .isInstanceOf(NullPointerException.class);
@@ -28,7 +28,7 @@ class ModelDescriptorTest {
     @Test
     void capabilities_defensiveCopy() {
         var mutable = new java.util.HashSet<>(Set.of("text"));
-        var desc = new ModelDescriptor("id", "id", "key", "vendor", "family", "name",
+        var desc = new ModelDescriptor("id", "id", "key", null, "vendor", "family", "name",
             ModelTier.FAST, mutable, 100000, 8192,
             ModelLocality.CLOUD, null, null, null);
         mutable.add("vision");
@@ -38,7 +38,7 @@ class ModelDescriptorTest {
     @Test
     void properties_defensiveCopy() {
         var mutable = new java.util.HashMap<>(Map.of("k", "v"));
-        var desc = new ModelDescriptor("id", "id", "key", "vendor", "family", "name",
+        var desc = new ModelDescriptor("id", "id", "key", null, "vendor", "family", "name",
             ModelTier.FAST, Set.of(), 100000, 8192,
             ModelLocality.CLOUD, null, null, mutable);
         mutable.put("k2", "v2");
@@ -47,7 +47,7 @@ class ModelDescriptorTest {
 
     @Test
     void nullCapabilities_defaultsToEmptySet() {
-        var desc = new ModelDescriptor("id", "id", "key", "vendor", "family", "name",
+        var desc = new ModelDescriptor("id", "id", "key", null, "vendor", "family", "name",
             ModelTier.FAST, null, 100000, 8192,
             ModelLocality.CLOUD, null, null, null);
         assertThat(desc.capabilities()).isEmpty();

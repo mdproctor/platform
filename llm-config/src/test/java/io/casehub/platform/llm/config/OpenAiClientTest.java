@@ -29,7 +29,7 @@ class OpenAiClientTest {
             """;
 
         var seedGpt = new ModelDescriptor("gpt-4.1", "gpt-4.1",
-            "openai", "openai", "gpt-4", "GPT-4.1",
+            "openai", null, "openai", "gpt-4", "GPT-4.1",
             ModelTier.STANDARD, Set.of("text", "vision", "tool-use", "code", "reasoning"),
             1048576, 32768, ModelLocality.CLOUD, CostTier.MEDIUM, "api-key", Map.of());
 

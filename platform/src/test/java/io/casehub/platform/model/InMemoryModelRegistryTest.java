@@ -16,7 +16,7 @@ class InMemoryModelRegistryTest {
 
     private ModelDescriptor desc(String id, String vendor, String family, ModelTier tier,
             Set<String> caps, ModelLocality locality, CostTier cost, String authMethod) {
-        return new ModelDescriptor(id, id, "backend", vendor, family, id, tier,
+        return new ModelDescriptor(id, id, "backend", null, vendor, family, id, tier,
             caps, 200000, 16384, locality, cost, authMethod, Map.of());
     }
 

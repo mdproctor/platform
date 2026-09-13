@@ -91,7 +91,7 @@ class RoutingAgentProviderTest {
     }
 
     static ModelDescriptor descriptor(String id, String backendKey) {
-        return new ModelDescriptor(id, id, backendKey, "test-vendor", "test-family",
+        return new ModelDescriptor(id, id, backendKey, null, "test-vendor", "test-family",
                 "Test " + id, ModelTier.STANDARD, Set.of(), 128000, 16384,
                 ModelLocality.CLOUD, null, null, Map.of());
     }

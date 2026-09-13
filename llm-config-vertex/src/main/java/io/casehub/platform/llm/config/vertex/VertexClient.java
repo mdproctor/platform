@@ -106,12 +106,12 @@ public class VertexClient implements VendorClient {
                 ModelDescriptor seed = seedIndex.get(id);
                 if (seed != null) {
                     result.add(new ModelDescriptor(
-                        id, id, seed.backendKey(), seed.vendor(), seed.family(), name,
+                        id, id, seed.backendKey(), null, seed.vendor(), seed.family(), name,
                         seed.tier(), seed.capabilities(), seed.contextWindow(), seed.maxOutput(),
                         seed.locality(), seed.costTier(), seed.authMethod(), seed.properties()));
                 } else {
                     result.add(new ModelDescriptor(
-                        id, id, "claude", "anthropic", "claude", name,
+                        id, id, "claude", null, "anthropic", "claude", name,
                         ModelTier.STANDARD, Set.of(ModelCapabilities.TEXT), 0, 0,
                         ModelLocality.CLOUD, null, "gcp-adc", Map.of()));
                 }

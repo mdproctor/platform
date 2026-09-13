@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OpenAiCloudModelSourceTest {
 
     private static final ModelDescriptor SAMPLE = new ModelDescriptor(
-        "gpt-4.1", "gpt-4.1", "openai", "openai", "gpt-4",
+        "gpt-4.1", "gpt-4.1", "openai", null, "openai", "gpt-4",
         "GPT-4.1", ModelTier.FLAGSHIP, Set.of("text", "vision", "code"),
         128000, 16384, ModelLocality.CLOUD, null, "api-key", Map.of());
 

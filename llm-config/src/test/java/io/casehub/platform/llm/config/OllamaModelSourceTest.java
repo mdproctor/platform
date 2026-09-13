@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaModelSourceTest {
 
     private static final ModelDescriptor LLAMA3 = new ModelDescriptor(
-        "llama3", "llama3", "ollama", "meta", "llama", "Llama 3",
+        "llama3", "llama3", "ollama", null, "meta", "llama", "Llama 3",
         ModelTier.STANDARD, Set.of("text"), 0, 0,
         ModelLocality.LOCAL, CostTier.FREE, "local", Map.of());
 

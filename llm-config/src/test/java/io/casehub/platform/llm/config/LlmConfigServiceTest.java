@@ -181,7 +181,7 @@ class LlmConfigServiceTest {
                 return ValidationResult.failure("Invalid key");
             }
             var model = new ModelDescriptor("test-model", "test-model", backendKey,
-                vendorKey, vendorKey, "Test Model",
+                null, vendorKey, vendorKey, "Test Model",
                 ModelTier.STANDARD, Set.of("text"), 200000, 16384,
                 ModelLocality.CLOUD, CostTier.MEDIUM, "api-key", Map.of());
             return ValidationResult.success(List.of(model));

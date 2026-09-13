@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AnthropicCloudModelSourceTest {
 
     private static final ModelDescriptor SAMPLE = new ModelDescriptor(
-        "claude-sonnet-5", "claude-sonnet-5", "claude", "anthropic", "claude",
+        "claude-sonnet-5", "claude-sonnet-5", "claude", null, "anthropic", "claude",
         "Claude Sonnet 5", ModelTier.FLAGSHIP, Set.of("text", "vision"),
         200000, 8192, ModelLocality.CLOUD, null, "api-key", Map.of());
 

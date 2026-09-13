@@ -91,12 +91,12 @@ public class OpenAiClient implements VendorClient {
                 ModelDescriptor seed = seedIndex.get(id);
                 if (seed != null) {
                     result.add(new ModelDescriptor(
-                        id, id, seed.backendKey(), seed.vendor(), seed.family(), seed.displayName(),
+                        id, id, seed.backendKey(), null, seed.vendor(), seed.family(), seed.displayName(),
                         seed.tier(), seed.capabilities(), seed.contextWindow(), seed.maxOutput(),
                         seed.locality(), seed.costTier(), seed.authMethod(), seed.properties()));
                 } else {
                     result.add(new ModelDescriptor(
-                        id, id, "openai", "openai", "openai", id,
+                        id, id, "openai", null, "openai", "openai", id,
                         ModelTier.STANDARD, Set.of(ModelCapabilities.TEXT), 0, 0,
                         ModelLocality.CLOUD, null, "api-key", Map.of()));
                 }

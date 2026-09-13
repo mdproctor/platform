@@ -82,7 +82,7 @@ class ConfiguredModelSourceManagerTest {
     }
 
     private ModelDescriptor testDescriptor(String id) {
-        return new ModelDescriptor(id, id, "claude", "anthropic", "claude",
+        return new ModelDescriptor(id, id, "claude", null, "anthropic", "claude",
             "Test Model", ModelTier.STANDARD, Set.of("text"), 200000, 16384,
             ModelLocality.CLOUD, CostTier.HIGH, "api-key", Map.of());
     }

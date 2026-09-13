@@ -84,12 +84,12 @@ public class OllamaClient implements VendorClient {
                 ModelDescriptor seed = seedIndex.get(id);
                 if (seed != null) {
                     result.add(new ModelDescriptor(
-                        id, id, seed.backendKey(), seed.vendor(), seed.family(), seed.displayName(),
+                        id, id, seed.backendKey(), null, seed.vendor(), seed.family(), seed.displayName(),
                         seed.tier(), seed.capabilities(), seed.contextWindow(), seed.maxOutput(),
                         seed.locality(), seed.costTier(), seed.authMethod(), seed.properties()));
                 } else {
                     result.add(new ModelDescriptor(
-                        id, id, "ollama", "local", "local", name,
+                        id, id, "ollama", null, "local", "local", name,
                         ModelTier.STANDARD, Set.of(ModelCapabilities.TEXT), 0, 0,
                         ModelLocality.LOCAL, CostTier.FREE, "local", Map.of()));
                 }

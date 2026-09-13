@@ -73,6 +73,7 @@ public class SeedCatalogModelSource implements ModelSource {
             node.get("id").asText(),
             node.get("id").asText(),
             node.get("backendKey").asText(),
+            null,
             node.get("vendor").asText(),
             node.get("family").asText(),
             node.get("displayName").asText(),

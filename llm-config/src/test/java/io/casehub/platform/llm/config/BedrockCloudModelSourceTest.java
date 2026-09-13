@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BedrockCloudModelSourceTest {
 
     private static final ModelDescriptor SAMPLE = new ModelDescriptor(
-        "claude-sonnet-5", "claude-sonnet-5", "claude", "anthropic", "claude",
+        "claude-sonnet-5", "claude-sonnet-5", "claude", null, "anthropic", "claude",
         "Claude Sonnet 5", ModelTier.FLAGSHIP, Set.of("text"),
         200000, 8192, ModelLocality.CLOUD, null, "aws-sigv4", Map.of());
 

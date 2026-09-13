@@ -8,6 +8,7 @@ public record ModelDescriptor(
     String id,
     String apiModelId,
     String backendKey,
+    String backendInstanceId,
     String vendor,
     String family,
     String displayName,

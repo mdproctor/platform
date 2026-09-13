@@ -30,7 +30,7 @@ class AnthropicClientTest {
             """;
 
         var seedSonnet = new ModelDescriptor("claude-sonnet-5", "claude-sonnet-5",
-            "claude", "anthropic", "claude", "Claude Sonnet 5",
+            "claude", null, "anthropic", "claude", "Claude Sonnet 5",
             ModelTier.STANDARD, Set.of("text", "vision", "tool-use", "code", "reasoning"),
             200000, 16384, ModelLocality.CLOUD, CostTier.HIGH, "api-key", Map.of());
 

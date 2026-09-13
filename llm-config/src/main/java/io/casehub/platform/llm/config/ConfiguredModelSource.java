@@ -55,7 +55,7 @@ class ConfiguredModelSource implements ModelSource {
             .map(d -> new ModelDescriptor(
                 vendorKey + ":" + tenancyId + ":" + d.apiModelId(),
                 d.apiModelId(),
-                d.backendKey(), d.vendor(), d.family(), d.displayName(),
+                d.backendKey(), null, d.vendor(), d.family(), d.displayName(),
                 d.tier(), d.capabilities(), d.contextWindow(), d.maxOutput(),
                 d.locality(), d.costTier(), d.authMethod(), d.properties()))
             .toList();

@@ -122,12 +122,12 @@ public class BedrockClient implements VendorClient {
                 ModelDescriptor seed = seedIndex.get(modelId);
                 if (seed != null) {
                     result.add(new ModelDescriptor(
-                        modelId, modelId, seed.backendKey(), seed.vendor(), seed.family(), name,
+                        modelId, modelId, seed.backendKey(), null, seed.vendor(), seed.family(), name,
                         seed.tier(), seed.capabilities(), seed.contextWindow(), seed.maxOutput(),
                         seed.locality(), seed.costTier(), seed.authMethod(), seed.properties()));
                 } else {
                     result.add(new ModelDescriptor(
-                        modelId, modelId, "claude", "anthropic", "claude", name,
+                        modelId, modelId, "claude", null, "anthropic", "claude", name,
                         ModelTier.STANDARD, Set.of(ModelCapabilities.TEXT), 0, 0,
                         ModelLocality.CLOUD, null, "aws-sigv4", Map.of()));
                 }
