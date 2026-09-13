@@ -28,6 +28,7 @@ public class OllamaClient implements VendorClient {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final Function<ModelQuery, List<ModelDescriptor>> seedLookup;
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     @Inject
     OllamaClient(ModelRegistry registry) {
@@ -48,12 +49,11 @@ public class OllamaClient implements VendorClient {
     public ValidationResult listModels(Map<String, String> credentials) {
         String host = credentials.getOrDefault("host", DEFAULT_HOST);
         try {
-            var client = HttpClient.newHttpClient();
             var request = HttpRequest.newBuilder()
                 .uri(URI.create(host + "/api/tags"))
                 .GET()
                 .build();
-            var response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
                 return ValidationResult.failure("Ollama returned status " + response.statusCode());
             }
@@ -146,4 +146,76 @@ public class OllamaClient implements VendorClient {
     }
 
     record PullProgressData(String status, String digest, long totalBytes, long completedBytes) {}
+
+    boolean isReachable() {
+        return isReachable(DEFAULT_HOST);
+    }
+
+    boolean isReachable(String host) {
+        try {
+            var request = HttpRequest.newBuilder()
+                .uri(URI.create(host))
+                .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                .timeout(java.time.Duration.ofSeconds(5))
+                .build();
+            var response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+            return response.statusCode() == 200;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    List<OllamaSourceStatus.LoadedModel> ps() {
+        return ps(DEFAULT_HOST);
+    }
+
+    List<OllamaSourceStatus.LoadedModel> ps(String host) {
+        try {
+            var request = HttpRequest.newBuilder()
+                .uri(URI.create(host + "/api/ps"))
+                .GET()
+                .timeout(java.time.Duration.ofSeconds(10))
+                .build();
+            var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) return List.of();
+            return parsePsResponse(response.body());
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    String version() {
+        return version(DEFAULT_HOST);
+    }
+
+    String version(String host) {
+        try {
+            var request = HttpRequest.newBuilder()
+                .uri(URI.create(host + "/api/version"))
+                .GET()
+                .timeout(java.time.Duration.ofSeconds(5))
+                .build();
+            var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) return null;
+            return parseVersionResponse(response.body());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    boolean delete(String host, String modelName) {
+        try {
+            String body = MAPPER.writeValueAsString(Map.of("name", modelName));
+            var request = HttpRequest.newBuilder()
+                .uri(URI.create(host + "/api/delete"))
+                .method("DELETE", HttpRequest.BodyPublishers.ofString(body))
+                .header("Content-Type", "application/json")
+                .timeout(java.time.Duration.ofSeconds(30))
+                .build();
+            var response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+            return response.statusCode() == 200;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }
