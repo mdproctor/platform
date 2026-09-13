@@ -14,6 +14,9 @@ public class OpenAiAgentBackend extends AbstractOpenAiSdkBackend {
 
     private final OpenAiAgentProperties properties;
     private final com.openai.client.OpenAIClient openAiClient;
+    private       Duration                       factoryTimeout;
+    private       String                         factoryModel;
+
 
     @Inject
     public OpenAiAgentBackend(OpenAiAgentProperties properties) {
@@ -38,8 +41,23 @@ public class OpenAiAgentBackend extends AbstractOpenAiSdkBackend {
         this.openAiClient = null;
     }
 
+    OpenAiAgentBackend(com.openai.client.OpenAIClient client,
+                       Duration defaultTimeout, String defaultModel,
+                       int maxConcurrentSessions) {
+        super(maxConcurrentSessions, null);
+        this.properties     = null;
+        this.openAiClient   = client;
+        this.factoryTimeout = defaultTimeout;
+        this.factoryModel   = defaultModel;
+    }
+
+
     @Override public String key() { return "openai"; }
     @Override protected com.openai.client.OpenAIClient openAiClient() { return openAiClient; }
-    @Override protected Duration defaultTimeout() { return properties.defaultTimeout(); }
-    @Override protected String defaultModel() { return properties.defaultModel(); }
+
+    @Override
+    protected Duration defaultTimeout() {return properties != null ? properties.defaultTimeout() : factoryTimeout;}
+
+    @Override
+    protected String defaultModel() {return properties != null ? properties.defaultModel() : factoryModel;}
 }
