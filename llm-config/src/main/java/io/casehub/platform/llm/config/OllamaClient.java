@@ -15,6 +15,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -98,4 +99,51 @@ public class OllamaClient implements VendorClient {
             return List.of();
         }
     }
+
+    List<OllamaSourceStatus.LoadedModel> parsePsResponse(String json) {
+        try {
+            JsonNode root = MAPPER.readTree(json);
+            JsonNode models = root.path("models");
+            if (!models.isArray()) return List.of();
+
+            List<OllamaSourceStatus.LoadedModel> result = new ArrayList<>();
+            for (JsonNode node : models) {
+                String name = node.path("name").asText();
+                long size = node.path("size").asLong(0);
+                long sizeVram = node.path("size_vram").asLong(0);
+                String quant = node.path("details").path("quantization_level").asText(null);
+                Instant expiresAt = node.has("expires_at")
+                    ? Instant.parse(node.get("expires_at").asText())
+                    : null;
+                result.add(new OllamaSourceStatus.LoadedModel(name, size, sizeVram, quant, expiresAt));
+            }
+            return result;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    String parseVersionResponse(String json) {
+        try {
+            JsonNode root = MAPPER.readTree(json);
+            return root.has("version") ? root.get("version").asText() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    PullProgressData parsePullProgressLine(String line) {
+        try {
+            JsonNode node = MAPPER.readTree(line);
+            String status = node.path("status").asText("");
+            String digest = node.path("digest").asText(null);
+            long total = node.path("total").asLong(0);
+            long completed = node.path("completed").asLong(0);
+            return new PullProgressData(status, digest, total, completed);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    record PullProgressData(String status, String digest, long totalBytes, long completedBytes) {}
 }
