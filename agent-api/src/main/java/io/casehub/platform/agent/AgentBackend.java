@@ -19,6 +19,9 @@ public interface AgentBackend {
      */
     String key();
 
+    default String instanceId() {return "default";}
+
+
     Multi<AgentEvent> invoke(AgentSessionConfig config);
 
     AgentSession openSession(AgentSessionInit init);
