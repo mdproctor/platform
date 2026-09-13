@@ -17,6 +17,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @ApplicationScoped
 public class LlmConfigService implements LlmConfigApi {
@@ -31,6 +33,8 @@ public class LlmConfigService implements LlmConfigApi {
     private final PreferenceStore preferenceStore;
     private final Map<String, VendorClient> clientsByVendor;
     private final List<CloudModelSource>    cloudSources;
+    private final OllamaModelSource ollamaSource;
+    private final ConcurrentHashMap<String, PullProgress> pullOperations = new ConcurrentHashMap<>();
 
 
     @Inject
@@ -39,7 +43,8 @@ public class LlmConfigService implements LlmConfigApi {
                       LlmCredentialStore credentialStore,
                       PreferenceStore preferenceStore,
                       @Any Instance<VendorClient> vendorClients,
-                      @Any Instance<CloudModelSource> cloudModelSources) {
+                      @Any Instance<CloudModelSource> cloudModelSources,
+                      OllamaModelSource ollamaSource) {
         this.principal = principal;
         this.credentialStore = credentialStore;
         this.preferenceStore = preferenceStore;
@@ -52,6 +57,7 @@ public class LlmConfigService implements LlmConfigApi {
         for (CloudModelSource cs : cloudModelSources) {
             this.cloudSources.add(cs);
         }
+        this.ollamaSource = ollamaSource;
     }
 
     LlmConfigService(CurrentPrincipal principal,
@@ -59,7 +65,8 @@ public class LlmConfigService implements LlmConfigApi {
                       LlmCredentialStore credentialStore,
                       PreferenceStore preferenceStore,
                       List<VendorClient> vendorClients,
-                      List<CloudModelSource> cloudModelSources) {
+                      List<CloudModelSource> cloudModelSources,
+                      OllamaModelSource ollamaSource) {
         this.principal = principal;
         this.sourceManager = sourceManager;
         this.credentialStore = credentialStore;
@@ -69,6 +76,7 @@ public class LlmConfigService implements LlmConfigApi {
             clientsByVendor.put(client.vendorKey(), client);
         }
         this.cloudSources = cloudModelSources != null ? new ArrayList<>(cloudModelSources) : new ArrayList<>();
+        this.ollamaSource = ollamaSource;
     }
 
     @Override
@@ -158,6 +166,39 @@ public class LlmConfigService implements LlmConfigApi {
         return cloudSources.stream().map(CloudModelSource::status).toList();
     }
 
+    @Override
+    public OllamaSourceStatus ollamaStatus() {
+        return ollamaSource != null ? ollamaSource.status() : OllamaSourceStatus.offline("Ollama not configured");
+    }
+
+    @Override
+    public PullOperation pullModel(PullRequest request) {
+        String operationId = UUID.randomUUID().toString();
+        var progress = new PullProgress(operationId, request.modelRef(),
+            PullOperation.PullStatus.PULLING, 0, 0, null, null);
+        pullOperations.put(operationId, progress);
+        return new PullOperation(operationId, request.modelRef(), PullOperation.PullStatus.PULLING);
+    }
+
+    @Override
+    public PullProgress pullStatus(String operationId) {
+        return pullOperations.get(operationId);
+    }
+
+    @Override
+    public void cancelPull(String operationId) {
+        var current = pullOperations.get(operationId);
+        if (current != null) {
+            pullOperations.put(operationId, new PullProgress(
+                operationId, current.modelRef(), PullOperation.PullStatus.CANCELLED,
+                current.totalBytes(), current.completedBytes(), current.digest(), null));
+        }
+    }
+
+    @Override
+    public void deleteModel(String modelName) {
+        LOG.infof("Delete model requested: %s", modelName);
+    }
 
     private void persistProviderConfig(String tenancyId, String vendorKey,
                                        String credentialRef, String displayName) {

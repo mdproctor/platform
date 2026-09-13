@@ -40,7 +40,7 @@ class LlmConfigServiceTest {
         var stubClient = new StubVendorClient("test-vendor", "test-backend");
 
         service = new LlmConfigService(principal, manager, credentialStore,
-            preferenceStore, List.of(stubClient), List.of());
+            preferenceStore, List.of(stubClient), List.of(), null);
     }
 
     @Test
