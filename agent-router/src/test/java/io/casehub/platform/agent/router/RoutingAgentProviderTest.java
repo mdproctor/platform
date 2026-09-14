@@ -139,8 +139,8 @@ class RoutingAgentProviderTest {
                 backendRegistry(stubBackend("claude")), "claude", emptyRegistry());
         var config = AgentSessionConfig.of("sys", "user", "mistral");
         assertThatThrownBy(() -> router.invoke(config))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("mistral");
+                  .isInstanceOf(IllegalArgumentException.class)
+                  .hasMessageContaining("mistral");
     }
 
     @Test
@@ -149,8 +149,8 @@ class RoutingAgentProviderTest {
                 backendRegistry(stubBackend("openai")), "claude", emptyRegistry());
         var config = AgentSessionConfig.of("sys", "user");
         assertThatThrownBy(() -> router.invoke(config))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("No default backend");
+                  .isInstanceOf(IllegalStateException.class)
+                  .hasMessageContaining("No default backend");
     }
 
     @Test
@@ -166,7 +166,7 @@ class RoutingAgentProviderTest {
         var router = new RoutingAgentProvider(backendRegistry(), "claude", emptyRegistry());
         var config = AgentSessionConfig.of("sys", "user");
         assertThatThrownBy(() -> router.invoke(config))
-                .isInstanceOf(IllegalStateException.class);
+                  .isInstanceOf(IllegalStateException.class);
     }
 
     // --- Registry-path resolution ---
@@ -223,9 +223,9 @@ class RoutingAgentProviderTest {
                 backendRegistry(stubBackend("claude")), "claude", registry);
         var config = AgentSessionConfig.of("sys", "user", "gemini-2.5-pro");
         assertThatThrownBy(() -> router.invoke(config))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("gemini")
-                .hasMessageContaining("no backend with that key/instance is registered");
+                  .isInstanceOf(IllegalStateException.class)
+                  .hasMessageContaining("gemini")
+                  .hasMessageContaining("no backend with that key/instance is registered");
     }
 
     @Test
@@ -271,8 +271,8 @@ class RoutingAgentProviderTest {
         var router   = new RoutingAgentProvider(reg, "claude", modelReg);
         var config   = AgentSessionConfig.of("sys", "user", "claude-vertex-model");
         assertThatThrownBy(() -> router.invoke(config))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("claude")
-                .hasMessageContaining("vertex");
+                  .isInstanceOf(IllegalStateException.class)
+                  .hasMessageContaining("claude")
+                  .hasMessageContaining("vertex");
     }
 }

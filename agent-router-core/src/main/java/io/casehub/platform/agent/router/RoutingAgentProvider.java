@@ -10,13 +10,10 @@ import io.casehub.platform.agent.AgentSessionInit;
 import io.casehub.platform.api.model.ModelDescriptor;
 import io.casehub.platform.api.model.ModelRegistry;
 import io.smallrye.mutiny.Multi;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
 import java.util.Optional;
 
-@ApplicationScoped
 public class RoutingAgentProvider implements AgentProvider {
 
     private static final Logger LOG = Logger.getLogger(RoutingAgentProvider.class);
@@ -27,22 +24,13 @@ public class RoutingAgentProvider implements AgentProvider {
 
     private record ResolvedRoute(AgentBackend backend, String apiModelId) {}
 
-
-    @Inject
     public RoutingAgentProvider(BackendInstanceRegistry registry,
-                                RoutingAgentProperties properties,
+                                String defaultBackendKey,
                                 ModelRegistry modelRegistry) {
         this.registry          = registry;
-        this.defaultBackendKey = properties.defaultBackend();
+        this.defaultBackendKey = defaultBackendKey;
         this.modelRegistry     = modelRegistry;
-        LOG.infof("Agent router initialized with registry, default=%s", properties.defaultBackend());
-    }
-
-    RoutingAgentProvider(BackendInstanceRegistry registry, String defaultKey,
-                         ModelRegistry modelRegistry) {
-        this.registry          = registry;
-        this.defaultBackendKey = defaultKey;
-        this.modelRegistry     = modelRegistry;
+        LOG.infof("Agent router initialized with registry, default=%s", defaultBackendKey);
     }
 
     @Override
