@@ -1,15 +1,22 @@
 package io.casehub.platform.model;
 
+import io.casehub.platform.api.model.CostTier;
 import io.casehub.platform.api.model.ModelCatalogChangedEvent;
 import io.casehub.platform.api.model.ModelDescriptor;
+import io.casehub.platform.api.model.ModelLocality;
 import io.casehub.platform.api.model.ModelSource;
+import io.casehub.platform.api.model.ModelTier;
+import io.casehub.platform.api.model.RefreshResult;
 import jakarta.enterprise.event.Event;
 import jakarta.enterprise.inject.Instance;
+import org.junit.jupiter.api.Test;
+
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import org.junit.jupiter.api.Test;
+import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -55,6 +62,96 @@ class ModelRegistryRefresherTest {
 
         assertThat(refreshOrder).containsExactly("first", "failing", "last");
     }
+
+    @Test
+    void refreshAllWithResult_aggregatesDeltas() {
+        var sourceA = new ModelSource() {
+            @Override
+            public String sourceId() {return "a";}
+
+            @Override
+            public int priority()    {return 0;}
+
+            @Override
+            public List<ModelDescriptor> refresh() {
+                return List.of(
+                        new ModelDescriptor("a:m1", "m1", "openai", null, "openai", "gpt-4", "GPT-4",
+                                            ModelTier.FLAGSHIP, Set.of(), 128000, 4096, ModelLocality.CLOUD, CostTier.HIGH, null, Map.of()),
+                        new ModelDescriptor("a:m2", "m2", "openai", null, "openai", "gpt-4", "GPT-4 Mini",
+                                            ModelTier.FAST, Set.of(), 128000, 4096, ModelLocality.CLOUD, CostTier.LOW, null, Map.of())
+                              );
+            }
+        };
+        var sourceB = new ModelSource() {
+            @Override
+            public String sourceId() {return "b";}
+
+            @Override
+            public int priority()    {return 10;}
+
+            @Override
+            public List<ModelDescriptor> refresh() {
+                return List.of(
+                        new ModelDescriptor("b:m1", "m1", "anthropic", null, "anthropic", "claude", "Claude",
+                                            ModelTier.FLAGSHIP, Set.of(), 200000, 8192, ModelLocality.CLOUD, CostTier.HIGH, null, Map.of())
+                              );
+            }
+        };
+
+        var refresher = new ModelRegistryRefresher();
+        refresher.sources        = listInstance(List.of(sourceA, sourceB));
+        refresher.registry       = new InMemoryModelRegistry();
+        refresher.catalogChanged = noOpEvent();
+
+        RefreshResult result = refresher.refreshAllWithResult();
+
+        assertThat(result.sourcesRefreshed()).isEqualTo(2);
+        assertThat(result.totalModels()).isEqualTo(3);
+        assertThat(result.added()).isEqualTo(3);
+        assertThat(result.removed()).isEqualTo(0);
+        assertThat(result.updated()).isEqualTo(0);
+    }
+
+    @Test
+    void refreshAllWithResult_countsFailedSourcesAsZero() {
+        var good = new ModelSource() {
+            @Override
+            public String sourceId() {return "good";}
+
+            @Override
+            public int priority()    {return 0;}
+
+            @Override
+            public List<ModelDescriptor> refresh() {
+                return List.of(
+                        new ModelDescriptor("g:m1", "m1", "openai", null, "openai", "gpt-4", "GPT-4",
+                                            ModelTier.FLAGSHIP, Set.of(), 128000, 4096, ModelLocality.CLOUD, CostTier.HIGH, null, Map.of())
+                              );
+            }
+        };
+        var bad = new ModelSource() {
+            @Override
+            public String sourceId()               {return "bad";}
+
+            @Override
+            public int priority()                  {return 10;}
+
+            @Override
+            public List<ModelDescriptor> refresh() {throw new RuntimeException("boom");}
+        };
+
+        var refresher = new ModelRegistryRefresher();
+        refresher.sources        = listInstance(List.of(good, bad));
+        refresher.registry       = new InMemoryModelRegistry();
+        refresher.catalogChanged = noOpEvent();
+
+        RefreshResult result = refresher.refreshAllWithResult();
+
+        assertThat(result.sourcesRefreshed()).isEqualTo(1);
+        assertThat(result.totalModels()).isEqualTo(1);
+        assertThat(result.added()).isEqualTo(1);
+    }
+
 
     private ModelSource stubSource(String id, int priority, List<String> order) {
         return new ModelSource() {
