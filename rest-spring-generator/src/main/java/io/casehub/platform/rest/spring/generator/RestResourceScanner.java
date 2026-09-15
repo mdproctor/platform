@@ -7,7 +7,7 @@ import org.jboss.jandex.AnnotationValue;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.jboss.jandex.FieldInfo;
-import org.jboss.jandex.Index;
+import org.jboss.jandex.IndexView;
 import org.jboss.jandex.MethodInfo;
 import org.jboss.jandex.MethodParameterInfo;
 
@@ -34,7 +34,7 @@ public class RestResourceScanner {
     private static final List<DotName> HTTP_METHODS = List.of(GET, POST, PUT, DELETE, PATCH);
     private static final List<String> HTTP_METHOD_NAMES = List.of("GET", "POST", "PUT", "DELETE", "PATCH");
 
-    public List<RestResourceDescriptor> scan(Index index) {
+    public List<RestResourceDescriptor> scan(IndexView index) {
         List<RestResourceDescriptor> result = new ArrayList<>();
 
         for (AnnotationInstance pathAnn : index.getAnnotations(PATH)) {

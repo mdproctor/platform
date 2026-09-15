@@ -2,6 +2,7 @@ package io.casehub.platform.generator;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.jboss.jandex.Index;
+import org.jboss.jandex.IndexView;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -42,7 +43,7 @@ class AbstractVerifyMojoTest {
             this.targetTypes = targetTypes;
         }
 
-        @Override protected Set<String> collectSourceTypes(Index index) { return sourceTypes; }
+        @Override protected Set<String> collectSourceTypes(IndexView index) { return sourceTypes; }
         @Override protected Set<String> collectTargetTypes() { return targetTypes; }
         @Override protected File getOutputDirectory() { return new File("target"); }
         @Override protected String getGeneratorName() { return "test"; }

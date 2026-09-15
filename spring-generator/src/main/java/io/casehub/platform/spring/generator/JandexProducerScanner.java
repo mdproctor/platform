@@ -3,7 +3,7 @@ package io.casehub.platform.spring.generator;
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
-import org.jboss.jandex.Index;
+import org.jboss.jandex.IndexView;
 import org.jboss.jandex.MethodInfo;
 import org.jboss.jandex.MethodParameterInfo;
 import org.jboss.jandex.Type;
@@ -21,6 +21,7 @@ public class JandexProducerScanner {
     private static final DotName CDI_INSTANCE = DotName.createSimple("jakarta.enterprise.inject.Instance");
     private static final DotName CDI_EVENT = DotName.createSimple("jakarta.enterprise.event.Event");
     private static final DotName INJECT = DotName.createSimple("jakarta.inject.Inject");
+    private static final DotName CONFIG_MAPPING = DotName.createSimple("io.smallrye.config.ConfigMapping");
 
     private static final java.util.Set<DotName> KNOWN_METHOD_ANNOTATIONS = java.util.Set.of(
             PRODUCES, DEFAULT_BEAN, ALTERNATIVE, PRIORITY,
@@ -29,7 +30,7 @@ public class JandexProducerScanner {
             DotName.createSimple("jakarta.enterprise.context.Dependent"),
             DotName.createSimple("jakarta.enterprise.context.RequestScoped"));
 
-    public List<ProducerDescriptor> scan(Index index) {
+    public List<ProducerDescriptor> scan(IndexView index) {
         List<ProducerDescriptor> result = new ArrayList<>();
 
         for (AnnotationInstance produces : index.getAnnotations(PRODUCES)) {
@@ -68,6 +69,11 @@ public class JandexProducerScanner {
                                    : param.type().name();
 
                 if (CDI_INSTANCE.equals(typeName) || CDI_EVENT.equals(typeName)) {
+                    hasCdiDeps = true;
+                }
+
+                ClassInfo paramTypeInfo = index.getClassByName(typeName);
+                if (paramTypeInfo != null && paramTypeInfo.hasAnnotation(CONFIG_MAPPING)) {
                     hasCdiDeps = true;
                 }
 

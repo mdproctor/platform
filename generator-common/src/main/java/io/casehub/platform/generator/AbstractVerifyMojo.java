@@ -1,20 +1,20 @@
 package io.casehub.platform.generator;
 
 import org.apache.maven.plugin.MojoExecutionException;
-import org.jboss.jandex.Index;
+import org.jboss.jandex.IndexView;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
 
 public abstract class AbstractVerifyMojo extends AbstractGeneratorMojo {
 
-    protected abstract Set<String> collectSourceTypes(Index index);
+    protected abstract Set<String> collectSourceTypes(IndexView index);
 
     protected abstract Set<String> collectTargetTypes();
 
     @Override
     public void execute() throws MojoExecutionException {
-        Index index = loadJandexIndex();
+        IndexView index = loadJandexIndex();
 
         Set<String> sourceTypes = collectSourceTypes(index);
         Set<String> targetTypes = collectTargetTypes();

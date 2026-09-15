@@ -4,7 +4,7 @@ import io.casehub.platform.generator.AbstractVerifyMojo;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.jboss.jandex.Index;
+import org.jboss.jandex.IndexView;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +33,7 @@ public class RestVerifyMojo extends AbstractVerifyMojo {
     protected String getGeneratorName() { return "rest-spring-generator"; }
 
     @Override
-    protected Set<String> collectSourceTypes(Index index) {
+    protected Set<String> collectSourceTypes(IndexView index) {
         var scanner = new RestResourceScanner();
         return scanner.scan(index).stream()
                 .map(RestResourceDescriptor::className)

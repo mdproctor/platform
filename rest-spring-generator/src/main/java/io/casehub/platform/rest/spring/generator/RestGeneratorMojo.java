@@ -6,7 +6,7 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.jboss.jandex.Index;
+import org.jboss.jandex.IndexView;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,7 +26,7 @@ public class RestGeneratorMojo extends AbstractGeneratorMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
-        Index index = loadJandexIndex();
+        IndexView index = loadJandexIndex();
 
         var scanner = new RestResourceScanner();
         List<RestResourceDescriptor> descriptors = scanner.scan(index);

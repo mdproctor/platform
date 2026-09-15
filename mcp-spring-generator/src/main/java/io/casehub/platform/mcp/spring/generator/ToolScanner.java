@@ -4,7 +4,7 @@ import io.casehub.platform.generator.JandexTypeConverter;
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationTarget;
 import org.jboss.jandex.DotName;
-import org.jboss.jandex.Index;
+import org.jboss.jandex.IndexView;
 import org.jboss.jandex.MethodInfo;
 import org.jboss.jandex.MethodParameterInfo;
 
@@ -16,7 +16,7 @@ public class ToolScanner {
     private static final DotName TOOL = DotName.createSimple("io.quarkiverse.mcp.server.Tool");
     private static final DotName TOOL_ARG = DotName.createSimple("io.quarkiverse.mcp.server.ToolArg");
 
-    public List<ToolDescriptor> scan(Index index) {
+    public List<ToolDescriptor> scan(IndexView index) {
         List<ToolDescriptor> result = new ArrayList<>();
 
         for (AnnotationInstance ann : index.getAnnotations(TOOL)) {

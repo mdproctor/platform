@@ -4,7 +4,7 @@ import io.casehub.platform.generator.AbstractVerifyMojo;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.jboss.jandex.Index;
+import org.jboss.jandex.IndexView;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,12 +38,14 @@ public class SpringVerifyMojo extends AbstractVerifyMojo {
     protected String getGeneratorName() { return "spring-generator"; }
 
     @Override
-    protected Set<String> collectSourceTypes(Index index) {
+    protected Set<String> collectSourceTypes(IndexView index) {
         var scanner = new JandexProducerScanner();
         List<ProducerDescriptor> quarkusProducers = scanner.scan(index);
         Set<String> types = new HashSet<>();
         for (ProducerDescriptor d : quarkusProducers) {
-            types.add(d.returnTypeSimpleName());
+            if (!d.requiresManualConfig()) {
+                types.add(d.returnTypeSimpleName());
+            }
         }
         return types;
     }

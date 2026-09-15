@@ -3,7 +3,7 @@ package io.casehub.platform.rest.spring.generator;
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
-import org.jboss.jandex.Index;
+import org.jboss.jandex.IndexView;
 import org.jboss.jandex.Type;
 
 import java.util.ArrayList;
@@ -17,7 +17,7 @@ public class ProviderScanner {
     private static final DotName PARAM_CONVERTER_PROVIDER = DotName.createSimple("jakarta.ws.rs.ext.ParamConverterProvider");
     private static final DotName PRIORITY = DotName.createSimple("jakarta.annotation.Priority");
 
-    public List<ProviderDescriptor> scan(Index index) {
+    public List<ProviderDescriptor> scan(IndexView index) {
         List<ProviderDescriptor> result = new ArrayList<>();
 
         for (ClassInfo classInfo : index.getKnownClasses()) {
@@ -62,7 +62,7 @@ public class ProviderScanner {
         return result;
     }
 
-    private boolean implementsInterface(ClassInfo classInfo, Index index, DotName interfaceName) {
+    private boolean implementsInterface(ClassInfo classInfo, IndexView index, DotName interfaceName) {
         return classInfo.interfaceNames().contains(interfaceName);
     }
 
