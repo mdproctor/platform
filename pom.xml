@@ -110,6 +110,7 @@
         <module>graphql-generator</module>
         <module>callback-generator</module>
         <module>callback-client</module>
+        <module>callback-spring</module>
         <module>yaml-core</module>
         <module>yaml-codegen</module>
         <module>yaml-jackson</module>
