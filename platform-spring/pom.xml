@@ -28,8 +28,30 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>io.casehub</groupId>
+            <artifactId>casehub-platform-preferences-editor-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.casehub</groupId>
+            <artifactId>casehub-platform-callback-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.graphql</groupId>
+            <artifactId>spring-graphql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
         </dependency>
 
         <!-- Test -->
@@ -60,6 +82,36 @@
                         <phase>verify</phase>
                         <configuration>
                             <quarkusModule>${project.basedir}/../platform</quarkusModule>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.casehub</groupId>
+                <artifactId>casehub-platform-graphql-spring-generator</artifactId>
+                <version>${project.version}</version>
+                <executions>
+                    <execution>
+                        <id>generate</id>
+                        <goals><goal>generate</goal></goals>
+                        <configuration>
+                            <quarkusModules>
+                                <quarkusModule>${project.basedir}/../platform-api</quarkusModule>
+                                <quarkusModule>${project.basedir}/../preferences-editor-core</quarkusModule>
+                                <quarkusModule>${project.basedir}/../callback-api</quarkusModule>
+                            </quarkusModules>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>verify-drift</id>
+                        <goals><goal>verify</goal></goals>
+                        <phase>verify</phase>
+                        <configuration>
+                            <quarkusModules>
+                                <quarkusModule>${project.basedir}/../platform-api</quarkusModule>
+                                <quarkusModule>${project.basedir}/../preferences-editor-core</quarkusModule>
+                                <quarkusModule>${project.basedir}/../callback-api</quarkusModule>
+                            </quarkusModules>
                         </configuration>
                     </execution>
                 </executions>

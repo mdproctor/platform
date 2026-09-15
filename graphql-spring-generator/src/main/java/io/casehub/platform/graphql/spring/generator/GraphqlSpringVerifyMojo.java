@@ -39,6 +39,7 @@ public class GraphqlSpringVerifyMojo extends AbstractVerifyMojo {
         var scanner = new McpDomainJandexScanner();
         return scanner.scan(index).stream()
                 .map(DomainScanResult::domainName)
+                .map(name -> name.replace("-", "").toLowerCase())
                 .collect(Collectors.toSet());
     }
 

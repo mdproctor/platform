@@ -248,7 +248,7 @@ public class SpringDomainRestControllerWriter {
         }
 
         if (returnType.startsWith("Optional<")) {
-            code.addStatement("return $L.map(v -> $T.ok((Object) v).build()).orElse($T.notFound().build())",
+            code.addStatement("return $L.map(v -> $T.ok((Object) v)).orElse($T.notFound().build())",
                     delegateCall, RESPONSE_ENTITY, RESPONSE_ENTITY);
             return code.build();
         }
