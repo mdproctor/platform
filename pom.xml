@@ -119,6 +119,7 @@
         <!-- ts-core excluded — dev.tsj:compiler-backend-jvm not in any public/CI repository -->
         <module>platform-pdf</module>
         <module>platform-signing</module>
+        <module>llm-config-core</module>
         <module>llm-config</module>
         <module>llm-config-vertex</module>
         <module>llm-config-bedrock</module>
