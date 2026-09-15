@@ -18,6 +18,7 @@ import io.casehub.platform.notification.dispatch.ChannelRouter;
 import io.casehub.platform.notification.dispatch.DeliveryRetryProcessor;
 import io.casehub.platform.notification.dispatch.DeliveryTracker;
 import io.casehub.platform.notification.dispatch.DigestFlushScheduler;
+import io.casehub.platform.notification.dispatch.EngagementCallbackService;
 import io.casehub.platform.notification.dispatch.EngagementRecorder;
 import io.casehub.platform.notification.dispatch.InAppEngagementBridge;
 import io.casehub.platform.notification.dispatch.InAppNotificationDeliverer;
@@ -161,5 +162,20 @@ public class DispatchBeans {
     public InAppNotificationDeliverer inAppNotificationDeliverer(NotificationStore notificationStore,
                                                                   DeliveryChannelRegistry channelRegistry) {
         return new InAppNotificationDeliverer(notificationStore, channelRegistry);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public EngagementCallbackService engagementCallbackService(
+            DeliveryAttemptStore deliveryAttemptStore,
+            EngagementRecorder engagementRecorder,
+            io.casehub.platform.api.identity.CurrentPrincipal currentPrincipal,
+            jakarta.enterprise.inject.Instance<io.casehub.platform.api.delivery.EngagementCallbackHandler> handlerInstances,
+            PreferenceProvider preferenceProvider) {
+        java.util.Map<String, io.casehub.platform.api.delivery.EngagementCallbackHandler> handlerMap =
+                handlerInstances.stream().collect(java.util.stream.Collectors.toMap(
+                        io.casehub.platform.api.delivery.EngagementCallbackHandler::channelId, h -> h));
+        return new EngagementCallbackService(deliveryAttemptStore, engagementRecorder,
+                currentPrincipal, handlerMap, preferenceProvider);
     }
 }

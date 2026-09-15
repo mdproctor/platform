@@ -70,6 +70,7 @@
         <module>subscriptions-jpa</module>
         <module>streams-kafka</module>
         <module>streams-amqp</module>
+        <module>streams-webhook-core</module>
         <module>streams-webhook</module>
         <module>streams-poll</module>
         <module>streams-camel</module>
@@ -109,6 +110,7 @@
         <module>callback</module>
         <module>graphql-generator</module>
         <module>callback-generator</module>
+        <module>callback-client-core</module>
         <module>callback-client</module>
         <module>callback-spring</module>
         <module>yaml-core</module>

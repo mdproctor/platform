@@ -1,1 +1,2 @@
 io.casehub.platform.spring.PlatformDefaultsManualConfig
+io.casehub.platform.spring.rest.RestControllersAutoConfiguration

@@ -1,7 +1,7 @@
 package io.casehub.platform.subscription.rest;
 
 import io.casehub.platform.api.subscription.EventTypeDescriptor;
-import io.casehub.platform.api.subscription.EventTypeRegistry;
+import io.casehub.platform.subscription.EventTypeService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -13,15 +13,15 @@ import java.util.Set;
 @Path("/subscriptions/event-types")
 public class EventTypeResource {
 
-    private final EventTypeRegistry eventTypeRegistry;
+    private final EventTypeService eventTypeService;
 
     @Inject
-    public EventTypeResource(final EventTypeRegistry eventTypeRegistry) {
-        this.eventTypeRegistry = eventTypeRegistry;
+    public EventTypeResource(final EventTypeService eventTypeService) {
+        this.eventTypeService = eventTypeService;
     }
 
     @GET
     public Set<EventTypeDescriptor> listEventTypes() {
-        return eventTypeRegistry.discover();
+        return eventTypeService.listEventTypes();
     }
 }

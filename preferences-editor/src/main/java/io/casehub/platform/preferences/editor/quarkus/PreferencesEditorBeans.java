@@ -1,6 +1,8 @@
 package io.casehub.platform.preferences.editor.quarkus;
 
+import io.casehub.platform.api.preferences.PreferenceSchemaRegistry;
 import io.casehub.platform.preferences.editor.InMemoryPreferenceSchemaRegistry;
+import io.casehub.platform.preferences.editor.PreferenceSchemaService;
 import io.casehub.platform.preferences.editor.PreferenceValidator;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
@@ -18,5 +20,11 @@ public class PreferencesEditorBeans {
     @ApplicationScoped
     public PreferenceValidator preferenceValidator() {
         return new PreferenceValidator();
+    }
+
+    @Produces
+    @ApplicationScoped
+    public PreferenceSchemaService preferenceSchemaService(PreferenceSchemaRegistry registry) {
+        return new PreferenceSchemaService(registry);
     }
 }

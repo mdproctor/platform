@@ -13,11 +13,11 @@ import org.junit.jupiter.api.Test;
 class CallbackDispatchResourceTest {
 
     @Inject
-    CallbackDispatchResource dispatchResource;
+    CallbackDispatcher dispatcher;
 
     @BeforeEach
     void setUp() {
-        dispatchResource.registerSpi("test-spi", new TestSpi());
+        dispatcher.registerSpi("test-spi", new TestSpi());
     }
 
     @Test

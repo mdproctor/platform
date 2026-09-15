@@ -68,7 +68,7 @@ public class CallbackAutoRegistrar implements HealthCheck {
     int timeoutMs;
 
     @Inject
-    CallbackDispatchResource dispatchResource;
+    CallbackDispatcher dispatcher;
 
     @Inject
     @Any
@@ -114,7 +114,7 @@ public class CallbackAutoRegistrar implements HealthCheck {
                             ? toKebabCase(iface.getSimpleName())
                             : annotation.name();
                     final Object bean = handle.get();
-                    dispatchResource.registerSpi(spiName, bean);
+                    dispatcher.registerSpi(spiName, bean);
                     pendingSpiNames.add(spiName);
                 }
             }
