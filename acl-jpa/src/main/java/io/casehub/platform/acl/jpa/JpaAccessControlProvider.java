@@ -89,9 +89,11 @@ public class JpaAccessControlProvider implements AccessControlProvider {
         Instant now       = Instant.now();
         String  tenancyId = principal.tenancyId();
         String  resIdStr  = resourceId.toString();
-        List<AclEntryEntity> entries = AclEntryEntity.list(
-                "actorId = ?1 and resourceId = ?2 and tenancyId = ?3",
-                actorId, resIdStr, tenancyId);
+        List<AclEntryEntity> entries = entityManager.createQuery(
+                "from AclEntryEntity where actorId = ?1 and resourceId = ?2 and tenancyId = ?3",
+                AclEntryEntity.class)
+                .setParameter(1, actorId).setParameter(2, resIdStr).setParameter(3, tenancyId)
+                .getResultList();
         for (AclEntryEntity entry : entries) {
             AclAuditLogEntity log = new AclAuditLogEntity();
             log.actorId     = actorId;
@@ -101,10 +103,11 @@ public class JpaAccessControlProvider implements AccessControlProvider {
             log.performedBy = principal.actorId();
             log.performedAt = now;
             log.tenancyId   = tenancyId;
-            log.persist();
+            entityManager.persist(log);
         }
-        AclEntryEntity.delete("actorId = ?1 and resourceId = ?2 and tenancyId = ?3",
-                              actorId, resIdStr, tenancyId);
+        entityManager.createQuery("delete from AclEntryEntity where actorId = ?1 and resourceId = ?2 and tenancyId = ?3")
+                .setParameter(1, actorId).setParameter(2, resIdStr).setParameter(3, tenancyId)
+                .executeUpdate();
     }
 
     @Override
@@ -112,17 +115,17 @@ public class JpaAccessControlProvider implements AccessControlProvider {
     public void registerParent(ResourceId childResourceId, ResourceId parentResourceId) {
         String tenancyId = principal.tenancyId();
         String childStr  = childResourceId.toString();
-        ResourceParentEntity existing = ResourceParentEntity.findById(
+        ResourceParentEntity existing = entityManager.find(ResourceParentEntity.class,
                 new ResourceParentKey(childStr, tenancyId));
         if (existing == null) {
             ResourceParentEntity rp = new ResourceParentEntity();
             rp.childResourceId  = childStr;
             rp.parentResourceId = parentResourceId.toString();
             rp.tenancyId        = tenancyId;
-            rp.persist();
+            entityManager.persist(rp);
         } else {
             existing.parentResourceId = parentResourceId.toString();
-            existing.persist();
+            entityManager.merge(existing);
         }
     }
 
@@ -136,28 +139,23 @@ public class JpaAccessControlProvider implements AccessControlProvider {
 
         List<String> granted;
         if (shouldFilterByTenant()) {
-            granted = AclEntryEntity.find(
-                                            "select distinct e.resourceId from AclEntryEntity e " +
-                                            "where e.entryType = 'ALLOW' " +
-                                            "and e.action in ?1 " +
-                                            "and (e.expiresAt is null or e.expiresAt > ?2) " +
-                                            "and e.actorId in ?3 " +
-                                            "and e.resourceId like ?4 escape '\\' " +
-                                            "and e.tenancyId = ?5",
-                                            satisfyingActions, Instant.now(), candidates, prefix, principal.tenancyId())
-                                    .project(String.class)
-                                    .list();
+            granted = entityManager.createQuery(
+                    "select distinct e.resourceId from AclEntryEntity e " +
+                    "where e.entryType = 'ALLOW' and e.action in ?1 " +
+                    "and (e.expiresAt is null or e.expiresAt > ?2) " +
+                    "and e.actorId in ?3 and e.resourceId like ?4 escape '\\' " +
+                    "and e.tenancyId = ?5", String.class)
+                    .setParameter(1, satisfyingActions).setParameter(2, Instant.now())
+                    .setParameter(3, candidates).setParameter(4, prefix)
+                    .setParameter(5, principal.tenancyId()).getResultList();
         } else {
-            granted = AclEntryEntity.find(
-                                            "select distinct e.resourceId from AclEntryEntity e " +
-                                            "where e.entryType = 'ALLOW' " +
-                                            "and e.action in ?1 " +
-                                            "and (e.expiresAt is null or e.expiresAt > ?2) " +
-                                            "and e.actorId in ?3 " +
-                                            "and e.resourceId like ?4 escape '\\'",
-                                            satisfyingActions, Instant.now(), candidates, prefix)
-                                    .project(String.class)
-                                    .list();
+            granted = entityManager.createQuery(
+                    "select distinct e.resourceId from AclEntryEntity e " +
+                    "where e.entryType = 'ALLOW' and e.action in ?1 " +
+                    "and (e.expiresAt is null or e.expiresAt > ?2) " +
+                    "and e.actorId in ?3 and e.resourceId like ?4 escape '\\'", String.class)
+                    .setParameter(1, satisfyingActions).setParameter(2, Instant.now())
+                    .setParameter(3, candidates).setParameter(4, prefix).getResultList();
         }
 
         Set<String> denied = fetchDeniedResources(candidates, deniedByActions, prefix);
@@ -182,60 +180,50 @@ public class JpaAccessControlProvider implements AccessControlProvider {
         List<String> results;
         if (query.cursor() != null) {
             if (shouldFilterByTenant()) {
-                results = AclEntryEntity.find(
-                                                "select distinct e.resourceId from AclEntryEntity e " +
-                                                "where e.entryType = 'ALLOW' " +
-                                                "and e.action in ?1 " +
-                                                "and (e.expiresAt is null or e.expiresAt > ?2) " +
-                                                "and e.actorId in ?3 " +
-                                                "and e.resourceId like ?4 escape '\\' " +
-                                                "and e.tenancyId = ?5 " +
-                                                "and e.resourceId > ?6 " +
-                                                "order by e.resourceId",
-                                                satisfyingActions, Instant.now(), candidates, prefix,
-                                                principal.tenancyId(), query.cursor())
-                                        .page(0, fetchLimit)
-                                        .project(String.class).list();
+                results = entityManager.createQuery(
+                        "select distinct e.resourceId from AclEntryEntity e " +
+                        "where e.entryType = 'ALLOW' and e.action in ?1 " +
+                        "and (e.expiresAt is null or e.expiresAt > ?2) " +
+                        "and e.actorId in ?3 and e.resourceId like ?4 escape '\\' " +
+                        "and e.tenancyId = ?5 and e.resourceId > ?6 order by e.resourceId", String.class)
+                        .setParameter(1, satisfyingActions).setParameter(2, Instant.now())
+                        .setParameter(3, candidates).setParameter(4, prefix)
+                        .setParameter(5, principal.tenancyId()).setParameter(6, query.cursor())
+                        .setMaxResults(fetchLimit).getResultList();
             } else {
-                results = AclEntryEntity.find(
-                                                "select distinct e.resourceId from AclEntryEntity e " +
-                                                "where e.entryType = 'ALLOW' " +
-                                                "and e.action in ?1 " +
-                                                "and (e.expiresAt is null or e.expiresAt > ?2) " +
-                                                "and e.actorId in ?3 " +
-                                                "and e.resourceId like ?4 escape '\\' " +
-                                                "and e.resourceId > ?5 " +
-                                                "order by e.resourceId",
-                                                satisfyingActions, Instant.now(), candidates, prefix, query.cursor())
-                                        .page(0, fetchLimit)
-                                        .project(String.class).list();
+                results = entityManager.createQuery(
+                        "select distinct e.resourceId from AclEntryEntity e " +
+                        "where e.entryType = 'ALLOW' and e.action in ?1 " +
+                        "and (e.expiresAt is null or e.expiresAt > ?2) " +
+                        "and e.actorId in ?3 and e.resourceId like ?4 escape '\\' " +
+                        "and e.resourceId > ?5 order by e.resourceId", String.class)
+                        .setParameter(1, satisfyingActions).setParameter(2, Instant.now())
+                        .setParameter(3, candidates).setParameter(4, prefix)
+                        .setParameter(5, query.cursor())
+                        .setMaxResults(fetchLimit).getResultList();
             }
         } else {
             if (shouldFilterByTenant()) {
-                results = AclEntryEntity.find(
-                                                "select distinct e.resourceId from AclEntryEntity e " +
-                                                "where e.entryType = 'ALLOW' " +
-                                                "and e.action in ?1 " +
-                                                "and (e.expiresAt is null or e.expiresAt > ?2) " +
-                                                "and e.actorId in ?3 " +
-                                                "and e.resourceId like ?4 escape '\\' " +
-                                                "and e.tenancyId = ?5 " +
-                                                "order by e.resourceId",
-                                                satisfyingActions, Instant.now(), candidates, prefix, principal.tenancyId())
-                                        .page(0, fetchLimit)
-                                        .project(String.class).list();
+                results = entityManager.createQuery(
+                        "select distinct e.resourceId from AclEntryEntity e " +
+                        "where e.entryType = 'ALLOW' and e.action in ?1 " +
+                        "and (e.expiresAt is null or e.expiresAt > ?2) " +
+                        "and e.actorId in ?3 and e.resourceId like ?4 escape '\\' " +
+                        "and e.tenancyId = ?5 order by e.resourceId", String.class)
+                        .setParameter(1, satisfyingActions).setParameter(2, Instant.now())
+                        .setParameter(3, candidates).setParameter(4, prefix)
+                        .setParameter(5, principal.tenancyId())
+                        .setMaxResults(fetchLimit).getResultList();
             } else {
-                results = AclEntryEntity.find(
-                                                "select distinct e.resourceId from AclEntryEntity e " +
-                                                "where e.entryType = 'ALLOW' " +
-                                                "and e.action in ?1 " +
-                                                "and (e.expiresAt is null or e.expiresAt > ?2) " +
-                                                "and e.actorId in ?3 " +
-                                                "and e.resourceId like ?4 escape '\\' " +
-                                                "order by e.resourceId",
-                                                satisfyingActions, Instant.now(), candidates, prefix)
-                                        .page(0, fetchLimit)
-                                        .project(String.class).list();
+                results = entityManager.createQuery(
+                        "select distinct e.resourceId from AclEntryEntity e " +
+                        "where e.entryType = 'ALLOW' and e.action in ?1 " +
+                        "and (e.expiresAt is null or e.expiresAt > ?2) " +
+                        "and e.actorId in ?3 and e.resourceId like ?4 escape '\\' " +
+                        "order by e.resourceId", String.class)
+                        .setParameter(1, satisfyingActions).setParameter(2, Instant.now())
+                        .setParameter(3, candidates).setParameter(4, prefix)
+                        .setMaxResults(fetchLimit).getResultList();
             }
         }
 
@@ -261,25 +249,24 @@ public class JpaAccessControlProvider implements AccessControlProvider {
 
         Set<String> allGrantedResources = new java.util.LinkedHashSet<>();
         if (shouldFilterByTenant()) {
-            List<String> tenantFilteredGrants = AclEntryEntity.find(
-                                                                      "select distinct e.resourceId from AclEntryEntity e " +
-                                                                      "where e.entryType = 'ALLOW' " +
-                                                                      "and e.action in ?1 " +
-                                                                      "and (e.expiresAt is null or e.expiresAt > ?2) " +
-                                                                      "and e.actorId in ?3 " +
-                                                                      "and e.tenancyId = ?4",
-                                                                      satisfyingActions, Instant.now(), candidates, principal.tenancyId())
-                                                              .project(String.class).list();
+            List<String> tenantFilteredGrants = entityManager.createQuery(
+                    "select distinct e.resourceId from AclEntryEntity e " +
+                    "where e.entryType = 'ALLOW' and e.action in ?1 " +
+                    "and (e.expiresAt is null or e.expiresAt > ?2) " +
+                    "and e.actorId in ?3 and e.tenancyId = ?4", String.class)
+                    .setParameter(1, satisfyingActions).setParameter(2, Instant.now())
+                    .setParameter(3, candidates).setParameter(4, principal.tenancyId())
+                    .getResultList();
             allGrantedResources.addAll(tenantFilteredGrants);
         } else {
-            List<String> allGrants = AclEntryEntity.find(
-                                                           "select distinct e.resourceId from AclEntryEntity e " +
-                                                           "where e.entryType = 'ALLOW' " +
-                                                           "and e.action in ?1 " +
-                                                           "and (e.expiresAt is null or e.expiresAt > ?2) " +
-                                                           "and e.actorId in ?3",
-                                                           satisfyingActions, Instant.now(), candidates)
-                                                   .project(String.class).list();
+            List<String> allGrants = entityManager.createQuery(
+                    "select distinct e.resourceId from AclEntryEntity e " +
+                    "where e.entryType = 'ALLOW' and e.action in ?1 " +
+                    "and (e.expiresAt is null or e.expiresAt > ?2) " +
+                    "and e.actorId in ?3", String.class)
+                    .setParameter(1, satisfyingActions).setParameter(2, Instant.now())
+                    .setParameter(3, candidates)
+                    .getResultList();
             allGrantedResources.addAll(allGrants);
         }
 
@@ -327,14 +314,17 @@ public class JpaAccessControlProvider implements AccessControlProvider {
         String  tenancyId = principal.tenancyId();
         String  resIdStr  = resourceId.toString();
 
-        List<AclEntryEntity> existing = AclEntryEntity.list(
-                "actorId = ?1 and resourceId = ?2 and action = ?3 and tenancyId = ?4 and entryType = ?5",
-                actorId, resIdStr, action.name(), tenancyId, entryType);
+        List<AclEntryEntity> existing = entityManager.createQuery(
+                "from AclEntryEntity where actorId = ?1 and resourceId = ?2 and action = ?3 and tenancyId = ?4 and entryType = ?5",
+                AclEntryEntity.class)
+                .setParameter(1, actorId).setParameter(2, resIdStr).setParameter(3, action.name())
+                .setParameter(4, tenancyId).setParameter(5, entryType)
+                .getResultList();
         if (!existing.isEmpty()) {
             AclEntryEntity entry = existing.getFirst();
             entry.expiresAt = expires;
             entry.grantedAt = now;
-            entry.persist();
+            entityManager.persist(entry);
         } else {
             AclEntryEntity entry = new AclEntryEntity();
             entry.actorId    = actorId;
@@ -344,7 +334,7 @@ public class JpaAccessControlProvider implements AccessControlProvider {
             entry.grantedAt  = now;
             entry.expiresAt  = expires;
             entry.tenancyId  = tenancyId;
-            entry.persist();
+            entityManager.persist(entry);
         }
 
         AclAuditLogEntity log = new AclAuditLogEntity();
@@ -356,16 +346,17 @@ public class JpaAccessControlProvider implements AccessControlProvider {
         log.performedAt = now;
         log.expiresAt   = expires;
         log.tenancyId   = tenancyId;
-        log.persist();
+        entityManager.persist(log);
     }
 
     private void removeEntry(String actorId, ResourceId resourceId, AclAction action,
                              String entryType, String auditOp) {
         String tenancyId = principal.tenancyId();
         String resIdStr  = resourceId.toString();
-        long count = AclEntryEntity.delete(
-                "actorId = ?1 and resourceId = ?2 and action = ?3 and tenancyId = ?4 and entryType = ?5",
-                actorId, resIdStr, action.name(), tenancyId, entryType);
+        long count = entityManager.createQuery("delete from AclEntryEntity where actorId = ?1 and resourceId = ?2 and action = ?3 and tenancyId = ?4 and entryType = ?5")
+                .setParameter(1, actorId).setParameter(2, resIdStr).setParameter(3, action.name())
+                .setParameter(4, tenancyId).setParameter(5, entryType)
+                .executeUpdate();
         if (count > 0) {
             AclAuditLogEntity log = new AclAuditLogEntity();
             log.actorId     = actorId;
@@ -375,7 +366,7 @@ public class JpaAccessControlProvider implements AccessControlProvider {
             log.performedBy = principal.actorId();
             log.performedAt = Instant.now();
             log.tenancyId   = tenancyId;
-            log.persist();
+            entityManager.persist(log);
         }
     }
 
@@ -395,7 +386,7 @@ public class JpaAccessControlProvider implements AccessControlProvider {
         int resolution = resolveAt(candidates, resourceId, action);
         if (resolution != 0) {return resolution > 0;}
 
-        ResourceParentEntity parent = ResourceParentEntity.findById(
+        ResourceParentEntity parent = entityManager.find(ResourceParentEntity.class,
                 new ResourceParentKey(resourceId.toString(), principal.tenancyId()));
         if (parent != null) {
             return resolveAccess(candidates, ResourceId.parse(parent.parentResourceId), action, depth + 1);
@@ -425,42 +416,43 @@ public class JpaAccessControlProvider implements AccessControlProvider {
 
     private boolean hasEntry(Set<String> candidates, String resourceId, List<String> actions, String entryType) {
         if (shouldFilterByTenant()) {
-            long count = AclEntryEntity.count(
-                    "actorId in ?1 and resourceId = ?2 and action in ?3 " +
-                    "and entryType = ?4 and (expiresAt is null or expiresAt > ?5) and tenancyId = ?6",
-                    candidates, resourceId, actions, entryType, Instant.now(), principal.tenancyId());
+            long count = entityManager.createQuery(
+                    "select count(e) from AclEntryEntity e where e.actorId in ?1 and e.resourceId = ?2 and e.action in ?3 " +
+                    "and e.entryType = ?4 and (e.expiresAt is null or e.expiresAt > ?5) and e.tenancyId = ?6", Long.class)
+                    .setParameter(1, candidates).setParameter(2, resourceId).setParameter(3, actions)
+                    .setParameter(4, entryType).setParameter(5, Instant.now()).setParameter(6, principal.tenancyId())
+                    .getSingleResult();
             return count > 0;
         }
-        long count = AclEntryEntity.count(
-                "actorId in ?1 and resourceId = ?2 and action in ?3 " +
-                "and entryType = ?4 and (expiresAt is null or expiresAt > ?5)",
-                candidates, resourceId, actions, entryType, Instant.now());
+        long count = entityManager.createQuery(
+                "select count(e) from AclEntryEntity e where e.actorId in ?1 and e.resourceId = ?2 and e.action in ?3 " +
+                "and e.entryType = ?4 and (e.expiresAt is null or e.expiresAt > ?5)", Long.class)
+                .setParameter(1, candidates).setParameter(2, resourceId).setParameter(3, actions)
+                .setParameter(4, entryType).setParameter(5, Instant.now())
+                .getSingleResult();
         return count > 0;
     }
 
     private Set<String> fetchDeniedResources(Set<String> candidates, List<String> deniedByActions, String prefix) {
         List<String> deniedList;
         if (shouldFilterByTenant()) {
-            deniedList = AclEntryEntity.find(
-                                               "select distinct e.resourceId from AclEntryEntity e " +
-                                               "where e.entryType = 'DENY' " +
-                                               "and e.action in ?1 " +
-                                               "and (e.expiresAt is null or e.expiresAt > ?2) " +
-                                               "and e.actorId in ?3 " +
-                                               "and e.resourceId like ?4 escape '\\' " +
-                                               "and e.tenancyId = ?5",
-                                               deniedByActions, Instant.now(), candidates, prefix, principal.tenancyId())
-                                       .project(String.class).list();
+            deniedList = entityManager.createQuery(
+                    "select distinct e.resourceId from AclEntryEntity e " +
+                    "where e.entryType = 'DENY' and e.action in ?1 " +
+                    "and (e.expiresAt is null or e.expiresAt > ?2) " +
+                    "and e.actorId in ?3 and e.resourceId like ?4 escape '\\' " +
+                    "and e.tenancyId = ?5", String.class)
+                    .setParameter(1, deniedByActions).setParameter(2, Instant.now())
+                    .setParameter(3, candidates).setParameter(4, prefix)
+                    .setParameter(5, principal.tenancyId()).getResultList();
         } else {
-            deniedList = AclEntryEntity.find(
-                                               "select distinct e.resourceId from AclEntryEntity e " +
-                                               "where e.entryType = 'DENY' " +
-                                               "and e.action in ?1 " +
-                                               "and (e.expiresAt is null or e.expiresAt > ?2) " +
-                                               "and e.actorId in ?3 " +
-                                               "and e.resourceId like ?4 escape '\\'",
-                                               deniedByActions, Instant.now(), candidates, prefix)
-                                       .project(String.class).list();
+            deniedList = entityManager.createQuery(
+                    "select distinct e.resourceId from AclEntryEntity e " +
+                    "where e.entryType = 'DENY' and e.action in ?1 " +
+                    "and (e.expiresAt is null or e.expiresAt > ?2) " +
+                    "and e.actorId in ?3 and e.resourceId like ?4 escape '\\'", String.class)
+                    .setParameter(1, deniedByActions).setParameter(2, Instant.now())
+                    .setParameter(3, candidates).setParameter(4, prefix).getResultList();
         }
         return new java.util.HashSet<>(deniedList);
     }

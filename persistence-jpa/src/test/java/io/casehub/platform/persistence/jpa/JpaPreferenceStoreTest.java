@@ -7,6 +7,7 @@ import io.casehub.platform.api.preferences.PreferenceRecord;
 import io.casehub.platform.api.preferences.PreferenceStore;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,11 +22,12 @@ class JpaPreferenceStoreTest {
     private static final String TENANT = TenancyConstants.DEFAULT_TENANT_ID;
 
     @Inject PreferenceStore store;
+    @Inject EntityManager em;
 
     @BeforeEach
     @Transactional
     void clear() {
-        PreferenceEntry.deleteAll();
+        em.createQuery("DELETE FROM PreferenceEntry").executeUpdate();
     }
 
     @Test

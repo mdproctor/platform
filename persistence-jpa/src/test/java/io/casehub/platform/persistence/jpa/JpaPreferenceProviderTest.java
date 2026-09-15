@@ -7,6 +7,7 @@ import io.casehub.platform.api.preferences.SettingsScope;
 import io.casehub.platform.api.preferences.SingleValuePreference;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ class JpaPreferenceProviderTest {
     private static final String TENANT = io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
     @Inject PreferenceProvider preferenceProvider;
+    @Inject EntityManager em;
 
     record Count(int value) implements SingleValuePreference {
         static final PreferenceKey<Count> KEY = new PreferenceKey<>(
@@ -31,7 +33,7 @@ class JpaPreferenceProviderTest {
     @BeforeEach
     @Transactional
     void clear() {
-        PreferenceEntry.deleteAll();
+        em.createQuery("DELETE FROM PreferenceEntry").executeUpdate();
     }
 
     @Test
@@ -155,6 +157,6 @@ class JpaPreferenceProviderTest {
         e.name      = name;
         e.subKey    = subKey;
         e.value     = value;
-        e.persist();
+        em.persist(e);
     }
 }

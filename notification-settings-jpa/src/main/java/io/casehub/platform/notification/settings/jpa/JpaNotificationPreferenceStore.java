@@ -17,7 +17,7 @@ import java.util.Optional;
  * {@code @DefaultBean} no-op (Tier 1) when on the classpath. Beaten by
  * {@code @Alternative @Priority(100)} in-memory (Tier 4).
  *
- * <p>Hibernate ORM Panache (blocking-only — no Hibernate Reactive overhead,
+ * <p>Hibernate ORM (blocking-only — no Hibernate Reactive overhead,
  * since no reactive SPI exists). Uses EntityManager directly per the
  * GE-20260512-66d997 pattern.
  *

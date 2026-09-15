@@ -1,6 +1,7 @@
 package io.casehub.platform.persistence.jpa;
 
 
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -51,8 +52,9 @@ public class PreferenceEntry {
     @Column(name = "pref_value", nullable = false, length = 4000)
     public String value;
 
-    static List<PreferenceEntry> findByScopes(final String tenancyId, final List<String> scopes) {
-        if (scopes.isEmpty()) {return Collections.emptyList();}
-        return list("tenancyId = ?1 and scope in ?2", tenancyId, scopes);
+    static List<PreferenceEntry> findByScopes(EntityManager em, String tenancyId, List<String> scopes) {
+        if (scopes.isEmpty()) { return Collections.emptyList(); }
+        return em.createQuery("from PreferenceEntry where tenancyId = ?1 and scope in ?2", PreferenceEntry.class)
+                .setParameter(1, tenancyId).setParameter(2, scopes).getResultList();
     }
 }
