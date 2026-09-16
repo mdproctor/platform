@@ -30,6 +30,8 @@ public class RestResourceScanner {
             "org.eclipse.microprofile.rest.client.inject.RegisterRestClient");
     private static final DotName CONSUMES = DotName.createSimple("jakarta.ws.rs.Consumes");
     private static final DotName PRODUCES = DotName.createSimple("jakarta.ws.rs.Produces");
+    private static final DotName CONTEXT = DotName.createSimple("jakarta.ws.rs.core.Context");
+    private static final DotName HTTP_HEADERS = DotName.createSimple("jakarta.ws.rs.core.HttpHeaders");
 
     private static final List<DotName> HTTP_METHODS = List.of(GET, POST, PUT, DELETE, PATCH);
     private static final List<String> HTTP_METHOD_NAMES = List.of("GET", "POST", "PUT", "DELETE", "PATCH");
@@ -79,18 +81,28 @@ public class RestResourceScanner {
             String[] classConsumes = extractMediaTypes(classInfo.annotation(CONSUMES));
             String[] classProduces = extractMediaTypes(classInfo.annotation(PRODUCES));
 
-            List<RestMethodDescriptor> methods = scanMethods(classInfo);
+            boolean hasContextHeaders = false;
+            for (FieldInfo field : classInfo.fields()) {
+                if (field.hasAnnotation(CONTEXT) && field.type().name().equals(HTTP_HEADERS)) {
+                    hasContextHeaders = true;
+                    break;
+                }
+            }
+
+            List<RestMethodDescriptor> methods = scanMethods(classInfo, hasContextHeaders, delegateTypeName, index);
 
             result.add(new RestResourceDescriptor(
                     className, path, delegateTypeName, delegateFieldName,
-                    methods, classConsumes, classProduces));
+                    methods, classConsumes, classProduces, hasContextHeaders));
         }
 
         return result;
     }
 
-    private List<RestMethodDescriptor> scanMethods(ClassInfo classInfo) {
+    private List<RestMethodDescriptor> scanMethods(ClassInfo classInfo, boolean hasContextHeaders, String delegateTypeName, IndexView index) {
         List<RestMethodDescriptor> methods = new ArrayList<>();
+
+        ClassInfo delegateClass = delegateTypeName != null ? index.getClassByName(delegateTypeName) : null;
 
         for (MethodInfo method : classInfo.methods()) {
             String httpMethod = detectHttpMethod(method);
@@ -99,31 +111,31 @@ public class RestResourceScanner {
             }
 
             AnnotationInstance methodPath = method.annotation(PATH);
-            String subPath = methodPath != null ? methodPath.value().asString() : "";
+            String             subPath    = methodPath != null ? methodPath.value().asString() : "";
 
             String[] consumes = extractMediaTypes(method.annotation(CONSUMES));
             String[] produces = extractMediaTypes(method.annotation(PRODUCES));
 
             List<RestMethodDescriptor.ParameterDescriptor> params = new ArrayList<>();
             for (MethodParameterInfo param : method.parameters()) {
-                String paramName = param.name() != null ? param.name() : "arg" + params.size();
+                String                         paramName = param.name() != null ? param.name() : "arg" + params.size();
                 com.palantir.javapoet.TypeName paramType = JandexTypeConverter.toTypeName(param.type());
 
-                RestMethodDescriptor.ParameterSource source = RestMethodDescriptor.ParameterSource.BODY;
-                String annotationValue = null;
+                RestMethodDescriptor.ParameterSource source          = RestMethodDescriptor.ParameterSource.BODY;
+                String                               annotationValue = null;
 
-                AnnotationInstance pathParam = findParamAnnotation(param, PATH_PARAM);
-                AnnotationInstance queryParam = findParamAnnotation(param, QUERY_PARAM);
+                AnnotationInstance pathParam   = findParamAnnotation(param, PATH_PARAM);
+                AnnotationInstance queryParam  = findParamAnnotation(param, QUERY_PARAM);
                 AnnotationInstance headerParam = findParamAnnotation(param, HEADER_PARAM);
 
                 if (pathParam != null) {
-                    source = RestMethodDescriptor.ParameterSource.PATH;
+                    source          = RestMethodDescriptor.ParameterSource.PATH;
                     annotationValue = pathParam.value().asString();
                 } else if (queryParam != null) {
-                    source = RestMethodDescriptor.ParameterSource.QUERY;
+                    source          = RestMethodDescriptor.ParameterSource.QUERY;
                     annotationValue = queryParam.value().asString();
                 } else if (headerParam != null) {
-                    source = RestMethodDescriptor.ParameterSource.HEADER;
+                    source          = RestMethodDescriptor.ParameterSource.HEADER;
                     annotationValue = headerParam.value().asString();
                 }
 
@@ -131,10 +143,21 @@ public class RestResourceScanner {
                         paramName, paramType, source, annotationValue));
             }
 
+            boolean needsHeaders = false;
+            if (hasContextHeaders && delegateClass != null) {
+                for (MethodInfo delegateMethod : delegateClass.methods()) {
+                    if (delegateMethod.name().equals(method.name())
+                        && delegateMethod.parameterTypes().size() > method.parameterTypes().size()) {
+                        needsHeaders = true;
+                        break;
+                    }
+                }
+            }
+
             methods.add(new RestMethodDescriptor(
                     method.name(), httpMethod, subPath,
                     JandexTypeConverter.toTypeName(method.returnType()),
-                    params, consumes, produces));
+                    params, consumes, produces, needsHeaders));
         }
 
         return methods;

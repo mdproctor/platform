@@ -98,7 +98,7 @@ class EngagementCallbackServiceTest {
         var service = new EngagementCallbackService(
                 store, recorder, principal, Map.of(), enabledProvider());
 
-        service.recordDirect("att-1", EngagementType.CLICKED, null);
+        service.recordDirect("att-1", new DirectEngagementRequest(EngagementType.CLICKED, null));
         assertThat(recorded).isNotEmpty();
     }
 
@@ -107,7 +107,7 @@ class EngagementCallbackServiceTest {
         var service = new EngagementCallbackService(
                 store, recorder, principal, Map.of(), enabledProvider());
 
-        assertThatThrownBy(() -> service.recordDirect("att-1", null, null))
+        assertThatThrownBy(() -> service.recordDirect("att-1", new DirectEngagementRequest(null, null)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

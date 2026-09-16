@@ -50,7 +50,7 @@ public class SpringDomainRestControllerWriter {
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(REST_CONTROLLER)
                 .addAnnotation(AnnotationSpec.builder(REQUEST_MAPPING)
-                        .addMember("value", "$S", "/api/" + domain.domainName())
+                        .addMember("value", "$S", domain.resolvedBasePath())
                         .addMember("produces", "$T.APPLICATION_JSON_VALUE", MEDIA_TYPE)
                         .build());
 
@@ -109,8 +109,11 @@ public class SpringDomainRestControllerWriter {
 
         StringBuilder pathSuffix = new StringBuilder();
         pathSuffix.append("/").append(GeneratorUtils.resolveRestPath(op.restPathOverride(), op.methodName()));
+        String resolvedPath = GeneratorUtils.resolveRestPath(op.restPathOverride(), op.methodName());
         for (String pp : pathParams) {
-            pathSuffix.append("/{").append(pp).append("}");
+            if (!resolvedPath.contains("{" + pp + "}")) {
+                pathSuffix.append("/{").append(pp).append("}");
+            }
         }
 
         ClassName mappingAnnotation = switch (httpVerb) {
@@ -192,8 +195,11 @@ public class SpringDomainRestControllerWriter {
 
         StringBuilder pathSuffix = new StringBuilder();
         pathSuffix.append("/").append(GeneratorUtils.resolveRestPath(op.restPathOverride(), op.methodName()));
+        String resolvedPath = GeneratorUtils.resolveRestPath(op.restPathOverride(), op.methodName());
         for (String pp : pathParams) {
-            pathSuffix.append("/{").append(pp).append("}");
+            if (!resolvedPath.contains("{" + pp + "}")) {
+                pathSuffix.append("/{").append(pp).append("}");
+            }
         }
 
         MethodSpec.Builder builder = MethodSpec.methodBuilder(op.methodName())
@@ -253,7 +259,7 @@ public class SpringDomainRestControllerWriter {
             return code.build();
         }
 
-        if (hasPathParam && !GeneratorUtils.isCollectionType(returnType)) {
+        if (hasPathParam && !GeneratorUtils.isCollectionType(returnType) && !GeneratorUtils.isPrimitiveType(returnType)) {
             code.addStatement("var result = $L", delegateCall);
             code.beginControlFlow("if (result == null)");
             code.addStatement("return $T.notFound().build()", RESPONSE_ENTITY);

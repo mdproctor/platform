@@ -2,7 +2,9 @@ package io.casehub.platform.subscription;
 
 import io.casehub.platform.api.expression.ExpressionEngineRegistry;
 import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.platform.api.notification.NotificationSeverity;
 import io.casehub.platform.api.subscription.NotificationTarget;
+import io.casehub.platform.api.subscription.NotificationTemplate;
 import io.casehub.platform.api.subscription.Subscription;
 import io.casehub.platform.api.subscription.SubscriptionConstants;
 import io.casehub.platform.api.subscription.SubscriptionInput;
@@ -14,9 +16,6 @@ import io.casehub.platform.api.subscription.SubscriptionUpdate;
 import io.casehub.platform.api.subscription.TargetType;
 import org.junit.jupiter.api.Test;
 
-import io.casehub.platform.api.notification.NotificationSeverity;
-import io.casehub.platform.api.subscription.NotificationTemplate;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +26,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SubscriptionServiceTest {
+    @Test
+    void classCarriesMcpDomainAnnotation() {
+        var ann = SubscriptionService.class.getAnnotation(
+                io.casehub.platform.api.mcp.McpDomain.class);
+        assertThat(ann).isNotNull();
+        assertThat(ann.value()).isEqualTo("subscriptions");
+        assertThat(ann.basePath()).isEqualTo("/subscriptions");
+    }
+
+    @Test
+    void methodsCarryOperationAnnotations() {
+        long annotatedCount = java.util.Arrays.stream(SubscriptionService.class.getDeclaredMethods())
+                                              .filter(m -> m.isAnnotationPresent(io.casehub.platform.api.mcp.PlatformQuery.class)
+                                                           || m.isAnnotationPresent(io.casehub.platform.api.mcp.PlatformMutation.class))
+                                              .count();
+        assertThat(annotatedCount).isGreaterThanOrEqualTo(7);
+    }
+
 
     private static final NotificationTemplate TEMPLATE = new NotificationTemplate(
             "title", "body", NotificationSeverity.INFO, "cat", null, "entity", "entityId", "actorId");

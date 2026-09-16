@@ -41,6 +41,15 @@ public final class GeneratorUtils {
                || returnType.startsWith("Collection<") || returnType.startsWith("Map<");
     }
 
+    private static final Set<String> PRIMITIVE_TYPES = Set.of(
+            "boolean", "byte", "short", "int", "long", "float", "double", "char"
+                                                             );
+
+    public static boolean isPrimitiveType(String returnType) {
+        return PRIMITIVE_TYPES.contains(returnType);
+    }
+
+
     public static String toKebabCase(String camelCase) {
         if (camelCase == null || camelCase.isEmpty()) { return camelCase; }
         StringBuilder sb = new StringBuilder();

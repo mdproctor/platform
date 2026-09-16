@@ -9,5 +9,6 @@ public record RestResourceDescriptor(
         String delegateFieldName,
         List<RestMethodDescriptor> methods,
         String[] classConsumes,
-        String[] classProduces
+        String[] classProduces,
+        boolean hasContextHeaders
 ) {}

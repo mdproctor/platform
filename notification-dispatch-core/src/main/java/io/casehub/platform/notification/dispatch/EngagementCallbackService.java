@@ -51,18 +51,18 @@ public class EngagementCallbackService {
         }
     }
 
-    public void recordDirect(String attemptId, EngagementType type, String metadata) {
+    public void recordDirect(String attemptId, DirectEngagementRequest request) {
         if (!isEngagementEnabled()) {
             throw new IllegalStateException("Engagement tracking is disabled");
         }
-        if (type == null) {
+        if (request.type() == null) {
             throw new IllegalArgumentException("Engagement type is required");
         }
         DeliveryAttempt attempt = store.findById(attemptId, principal.tenancyId());
         if (attempt == null) {
             throw new IllegalArgumentException("Attempt not found: " + attemptId);
         }
-        recorder.record(attempt, type, metadata);
+        recorder.record(attempt, request.type(), request.metadata());
     }
 
     private boolean isEngagementEnabled() {

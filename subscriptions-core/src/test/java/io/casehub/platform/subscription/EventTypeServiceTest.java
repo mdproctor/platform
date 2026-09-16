@@ -8,6 +8,14 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class EventTypeServiceTest {
+    @Test
+    void classCarriesMcpDomainAnnotation() {
+        var ann = EventTypeService.class.getAnnotation(
+                io.casehub.platform.api.mcp.McpDomain.class);
+        assertThat(ann).isNotNull();
+        assertThat(ann.value()).isEqualTo("subscription-event-types");
+    }
+
 
     @Test
     void listEventTypes_delegates_to_registry() {

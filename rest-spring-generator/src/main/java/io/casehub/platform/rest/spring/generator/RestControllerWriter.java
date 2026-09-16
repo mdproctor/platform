@@ -30,10 +30,11 @@ public class RestControllerWriter {
     private static final ClassName RESPONSE_ENTITY = ClassName.get("org.springframework.http", "ResponseEntity");
     private static final ClassName MEDIA_TYPE = ClassName.get("org.springframework.http", "MediaType");
     private static final ClassName OPTIONAL = ClassName.get("java.util", "Optional");
+    private static final ClassName HTTP_SERVLET_REQUEST = ClassName.get("jakarta.servlet.http", "HttpServletRequest");
 
     public JavaFile generate(RestResourceDescriptor descriptor, String targetPackage) {
         String simpleClassName = simpleClassName(descriptor.className());
-        String controllerName = simpleClassName.replace("Resource", "Controller");
+        String controllerName  = simpleClassName.replace("Resource", "Controller");
         if (controllerName.equals(simpleClassName)) {
             controllerName = simpleClassName + "Controller";
         }
@@ -41,20 +42,36 @@ public class RestControllerWriter {
         ClassName delegateType = ClassName.bestGuess(descriptor.delegateTypeName());
 
         TypeSpec.Builder classBuilder = TypeSpec.classBuilder(controllerName)
-                .addModifiers(Modifier.PUBLIC)
-                .addAnnotation(REST_CONTROLLER)
-                .addAnnotation(buildRequestMappingAnnotation(descriptor));
+                                                .addModifiers(Modifier.PUBLIC)
+                                                .addAnnotation(REST_CONTROLLER)
+                                                .addAnnotation(buildRequestMappingAnnotation(descriptor));
 
         classBuilder.addField(FieldSpec.builder(delegateType, descriptor.delegateFieldName(), Modifier.PRIVATE, Modifier.FINAL).build());
 
         classBuilder.addMethod(MethodSpec.constructorBuilder()
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(delegateType, descriptor.delegateFieldName())
-                .addStatement("this.$L = $L", descriptor.delegateFieldName(), descriptor.delegateFieldName())
-                .build());
+                                         .addModifiers(Modifier.PUBLIC)
+                                         .addParameter(delegateType, descriptor.delegateFieldName())
+                                         .addStatement("this.$L = $L", descriptor.delegateFieldName(), descriptor.delegateFieldName())
+                                         .build());
 
         for (RestMethodDescriptor method : descriptor.methods()) {
-            classBuilder.addMethod(buildMethod(method, descriptor.delegateFieldName()));
+            classBuilder.addMethod(buildMethod(method, descriptor.delegateFieldName(), descriptor.hasContextHeaders()));
+        }
+
+        if (descriptor.hasContextHeaders()) {
+            classBuilder.addMethod(MethodSpec.methodBuilder("extractHeaders")
+                                             .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
+                                             .returns(ParameterizedTypeName.get(
+                                                     ClassName.get("java.util", "Map"),
+                                                     ClassName.get("java.lang", "String"),
+                                                     ClassName.get("java.lang", "String")))
+                                             .addParameter(HTTP_SERVLET_REQUEST, "request")
+                                             .addStatement("$T<$T, $T> headers = new $T<>()",
+                                                           java.util.Map.class, String.class, String.class, java.util.HashMap.class)
+                                             .addStatement("for (String name : $T.list(request.getHeaderNames())) headers.put(name, request.getHeader(name))",
+                                                           ClassName.get("java.util", "Collections"))
+                                             .addStatement("return headers")
+                                             .build());
         }
 
         TypeSpec typeSpec = classBuilder.build();
@@ -75,19 +92,23 @@ public class RestControllerWriter {
         return builder.build();
     }
 
-    private MethodSpec buildMethod(RestMethodDescriptor method, String delegateFieldName) {
+    private MethodSpec buildMethod(RestMethodDescriptor method, String delegateFieldName, boolean hasContextHeaders) {
         TypeName returnType = wrapReturnType(method.returnType());
 
         MethodSpec.Builder builder = MethodSpec.methodBuilder(method.methodName())
-                .addModifiers(Modifier.PUBLIC)
-                .returns(returnType)
-                .addAnnotation(buildHttpMethodAnnotation(method));
+                                               .addModifiers(Modifier.PUBLIC)
+                                               .returns(returnType)
+                                               .addAnnotation(buildHttpMethodAnnotation(method));
 
         for (RestMethodDescriptor.ParameterDescriptor param : method.parameters()) {
             builder.addParameter(buildParameter(param));
         }
 
-        builder.addCode(buildMethodBody(method, delegateFieldName));
+        if (method.needsHeaderInjection()) {
+            builder.addParameter(HTTP_SERVLET_REQUEST, "httpRequest");
+        }
+
+        builder.addCode(buildMethodBody(method, delegateFieldName, method.needsHeaderInjection()));
 
         return builder.build();
     }
@@ -136,32 +157,41 @@ public class RestControllerWriter {
         if (originalType instanceof ParameterizedTypeName pt && pt.rawType().equals(OPTIONAL)) {
             return ParameterizedTypeName.get(RESPONSE_ENTITY, pt.typeArguments().get(0));
         }
+        if (originalType.toString().equals("jakarta.ws.rs.core.Response")) {
+            return ParameterizedTypeName.get(RESPONSE_ENTITY, ClassName.OBJECT);
+        }
         return ParameterizedTypeName.get(RESPONSE_ENTITY, originalType.box());
     }
 
-    private CodeBlock buildMethodBody(RestMethodDescriptor method, String delegateFieldName) {
+    private CodeBlock buildMethodBody(RestMethodDescriptor method, String delegateFieldName, boolean hasContextHeaders) {
         String args = method.parameters().stream()
-                .map(RestMethodDescriptor.ParameterDescriptor::name)
-                .reduce((a, b) -> a + ", " + b)
-                .orElse("");
+                            .map(RestMethodDescriptor.ParameterDescriptor::name)
+                            .reduce((a, b) -> a + ", " + b)
+                            .orElse("");
 
-        if (method.returnType().equals(TypeName.VOID)) {
+        if (hasContextHeaders) {
+            args = args.isEmpty() ? "extractHeaders(httpRequest)" : args + ", extractHeaders(httpRequest)";
+        }
+
+        boolean isResponseReturn = method.returnType().toString().equals("jakarta.ws.rs.core.Response");
+
+        if (method.returnType().equals(TypeName.VOID) || isResponseReturn) {
             return CodeBlock.builder()
-                    .addStatement("$L.$L($L)", delegateFieldName, method.methodName(), args)
-                    .addStatement("return $T.noContent().build()", RESPONSE_ENTITY)
-                    .build();
+                            .addStatement("$L.$L($L)", delegateFieldName, method.methodName(), args)
+                            .addStatement("return $T.ok().build()", RESPONSE_ENTITY)
+                            .build();
         }
 
         if (method.returnType() instanceof ParameterizedTypeName pt && pt.rawType().equals(OPTIONAL)) {
             return CodeBlock.builder()
-                    .addStatement("return $L.$L($L).map($T::ok).orElse($T.notFound().build())",
-                            delegateFieldName, method.methodName(), args, RESPONSE_ENTITY, RESPONSE_ENTITY)
-                    .build();
+                            .addStatement("return $L.$L($L).map($T::ok).orElse($T.notFound().build())",
+                                          delegateFieldName, method.methodName(), args, RESPONSE_ENTITY, RESPONSE_ENTITY)
+                            .build();
         }
 
         return CodeBlock.builder()
-                .addStatement("return $T.ok($L.$L($L))", RESPONSE_ENTITY, delegateFieldName, method.methodName(), args)
-                .build();
+                        .addStatement("return $T.ok($L.$L($L))", RESPONSE_ENTITY, delegateFieldName, method.methodName(), args)
+                        .build();
     }
 
     private CodeBlock mediaTypeConstant(String mediaType) {

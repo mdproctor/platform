@@ -61,7 +61,7 @@ public class EngagementCallbackResource {
     public Response recordDirect(@PathParam("attemptId") String attemptId,
                                  DirectEngagementRequest request) {
         try {
-            service.recordDirect(attemptId, request.type(), request.metadata());
+            service.recordDirect(attemptId, request);
             return Response.ok().build();
         } catch (IllegalStateException e) {
             return Response.status(404).build();
