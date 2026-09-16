@@ -51,6 +51,12 @@ public class JandexProducerScanner {
 
             boolean hasCdiDeps = false;
 
+            // Skip factory-produced JDK types — abstract/interface, can't be new'd
+            DotName returnTypeName = method.returnType().name();
+            if (returnTypeName.toString().startsWith("java.")) {
+                hasCdiDeps = true;
+            }
+
             // Skip methods from classes with @Inject fields (field-injected CDI beans)
             if (declaringClass.fields().stream()
                               .anyMatch(f -> f.hasAnnotation(INJECT) || f.hasAnnotation(CONFIG_PROPERTY))) {

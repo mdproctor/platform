@@ -16,7 +16,7 @@ public class AutoConfigurationWriter {
                 .filter(d -> !d.requiresManualConfig())
                 .findFirst()
                 .map(ProducerDescriptor::returnTypeSimpleName)
-                .orElse(descriptors.isEmpty() ? null : descriptors.get(0).returnTypeSimpleName());
+                .orElse(null);
 
         Set<String> imports = collectImports(descriptors);
         imports.add("org.springframework.boot.autoconfigure.AutoConfiguration");

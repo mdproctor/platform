@@ -38,7 +38,7 @@ public class SpringDomainRestControllerWriter {
     private static final ClassName HTTP_STATUS = ClassName.get("org.springframework.http", "HttpStatus");
     private static final ClassName MEDIA_TYPE = ClassName.get("org.springframework.http", "MediaType");
     private static final ClassName ROLES_ALLOWED = ClassName.get("jakarta.annotation.security", "RolesAllowed");
-    private static final ClassName SSE_EMITTER = ClassName.get("org.springframework.web.servlet.mvc", "SseEmitter");
+    private static final ClassName SSE_EMITTER = ClassName.get("org.springframework.web.servlet.mvc.method.annotation", "SseEmitter");
     private static final ClassName VALID = ClassName.get("jakarta.validation", "Valid");
 
     public JavaFile generate(DomainScanResult domain, String targetPackage) {
@@ -169,7 +169,7 @@ public class SpringDomainRestControllerWriter {
 
         if (op.paginated()) {
             builder.addStatement("var page = $L", delegateCall);
-            builder.addStatement("return $T.ok(page).header(\"X-Total-Count\", String.valueOf(page.$L())).build()",
+            builder.addStatement("return $T.ok().header(\"X-Total-Count\", String.valueOf(page.$L())).body(page)",
                     RESPONSE_ENTITY, op.totalCountMethod());
         } else {
             builder.addCode(generateResponseCode(op.returnTypeStr(), delegateCall, isMutation,
