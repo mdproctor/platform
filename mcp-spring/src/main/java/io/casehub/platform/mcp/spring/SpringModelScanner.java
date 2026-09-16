@@ -7,14 +7,11 @@ import io.casehub.platform.api.mcp.PlatformMutation;
 import io.casehub.platform.api.mcp.PlatformQuery;
 import io.casehub.platform.mcp.DomainModel;
 import io.casehub.platform.mcp.DomainModelRegistry;
-import io.casehub.platform.mcp.EventDescriptor;
 import io.casehub.platform.mcp.ModelScanComplete;
 import io.casehub.platform.mcp.OperationDescriptor;
 import io.casehub.platform.mcp.ParameterDescriptor;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
-
-
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -47,6 +44,7 @@ public class SpringModelScanner {
     void scan() {
         Map<String, List<OperationDescriptor>> domainOps = new LinkedHashMap<>();
 
+        // Pass 1: class-level @McpDomain (matches GraphQLModelScanner behavior)
         for (String beanName : context.getBeanDefinitionNames()) {
             Class<?> beanType;
             try {
@@ -54,29 +52,60 @@ public class SpringModelScanner {
             } catch (Exception e) {
                 continue;
             }
-            if (beanType == null) continue;
+            if (beanType == null) {continue;}
+
+            McpDomain mcpDomain = findMcpDomain(beanType);
+            if (mcpDomain == null) {continue;}
+            if (ModelEnricher.class.isAssignableFrom(beanType)) {continue;}
+
+            String domain = mcpDomain.value();
+            domainOps.computeIfAbsent(domain, k -> new ArrayList<>());
+            for (Method method : beanType.getDeclaredMethods()) {
+                if (Modifier.isStatic(method.getModifiers())) {continue;}
+                if (method.isAnnotationPresent(PlatformQuery.class)) {
+                    String desc = method.getAnnotation(PlatformQuery.class).value();
+                    domainOps.get(domain).add(
+                            buildOperation(method, beanType,
+                                           OperationDescriptor.OperationType.QUERY, desc));
+                } else if (method.isAnnotationPresent(PlatformMutation.class)) {
+                    String desc = method.getAnnotation(PlatformMutation.class).value();
+                    domainOps.get(domain).add(
+                            buildOperation(method, beanType,
+                                           OperationDescriptor.OperationType.MUTATION, desc));
+                }
+            }
+        }
+
+        // Pass 2: interface-level @McpDomain (skip already-registered domains)
+        for (String beanName : context.getBeanDefinitionNames()) {
+            Class<?> beanType;
+            try {
+                beanType = context.getType(beanName);
+            } catch (Exception e) {
+                continue;
+            }
+            if (beanType == null) {continue;}
 
             for (Class<?> iface : beanType.getInterfaces()) {
                 McpDomain mcpDomain = iface.getAnnotation(McpDomain.class);
-                if (mcpDomain == null) continue;
+                if (mcpDomain == null) {continue;}
 
                 String domain = mcpDomain.value();
-                if (domainOps.containsKey(domain)) continue;
+                if (domainOps.containsKey(domain)) {continue;}
 
                 domainOps.computeIfAbsent(domain, k -> new ArrayList<>());
                 for (Method method : iface.getDeclaredMethods()) {
-                    if (Modifier.isStatic(method.getModifiers())) continue;
-
+                    if (Modifier.isStatic(method.getModifiers())) {continue;}
                     if (method.isAnnotationPresent(PlatformQuery.class)) {
                         String desc = method.getAnnotation(PlatformQuery.class).value();
                         domainOps.get(domain).add(
                                 buildOperation(method, beanType,
-                                        OperationDescriptor.OperationType.QUERY, desc));
+                                               OperationDescriptor.OperationType.QUERY, desc));
                     } else if (method.isAnnotationPresent(PlatformMutation.class)) {
                         String desc = method.getAnnotation(PlatformMutation.class).value();
                         domainOps.get(domain).add(
                                 buildOperation(method, beanType,
-                                        OperationDescriptor.OperationType.MUTATION, desc));
+                                               OperationDescriptor.OperationType.MUTATION, desc));
                     }
                 }
             }
@@ -85,13 +114,13 @@ public class SpringModelScanner {
         Map<String, ModelEnricher> enricherMap = resolveEnrichers();
 
         for (var entry : domainOps.entrySet()) {
-            String domain = entry.getKey();
-            ModelEnricher enricher = enricherMap.get(domain);
-            String summary = enricher != null ? enricher.summary() : "";
-            Map<String, Object> state = enricher != null ? enricher.state() : Map.of();
+            String              domain   = entry.getKey();
+            ModelEnricher       enricher = enricherMap.get(domain);
+            String              summary  = enricher != null ? enricher.summary() : "";
+            Map<String, Object> state    = enricher != null ? enricher.state() : Map.of();
 
             DomainModel model = new DomainModel(domain, summary,
-                    List.copyOf(entry.getValue()), List.of(), state);
+                                                List.copyOf(entry.getValue()), List.of(), state);
             registry.register(model);
             LOG.log(System.Logger.Level.INFO, "MCP domain ''{0}'': {1} operations", domain, model.operations().size());
         }

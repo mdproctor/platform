@@ -7,7 +7,6 @@ import io.casehub.platform.mcp.DomainModel;
 import io.casehub.platform.mcp.DomainModelRegistry;
 import io.casehub.platform.mcp.OperationDescriptor;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
@@ -88,6 +87,24 @@ class SpringModelScannerTest {
                 });
     }
 
+    @Test
+    void discoversClassWithMcpDomainDirectly() {
+        runner.withBean("classService", ClassBasedService.class, ClassBasedService::new)
+              .run(context -> {
+                  DomainModelRegistry registry = context.getBean(DomainModelRegistry.class);
+                  assertThat(registry.getDomains()).hasSize(1);
+
+                  DomainModel domain = registry.getDomain("class-domain").orElseThrow();
+                  assertThat(domain.name()).isEqualTo("class-domain");
+                  assertThat(domain.operations()).hasSize(2);
+
+                  List<String> opNames = domain.operations().stream()
+                                               .map(OperationDescriptor::name).toList();
+                  assertThat(opNames).containsExactlyInAnyOrder("getData", "setData");
+              });
+    }
+
+
     @McpDomain("test-domain")
     interface TestService {
         @PlatformQuery("List all items")
@@ -112,4 +129,14 @@ class SpringModelScannerTest {
     static class PlainService {
         public String hello() { return "hi"; }
     }
+
+    @McpDomain("class-domain")
+    static class ClassBasedService {
+        @PlatformQuery("Get data")
+        public String getData() {return "data";}
+
+        @PlatformMutation("Set data")
+        public void setData(String value) {}
+    }
+
 }
