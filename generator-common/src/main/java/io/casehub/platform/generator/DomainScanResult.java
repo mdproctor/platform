@@ -5,8 +5,8 @@ import java.util.List;
 
 public record DomainScanResult(
         String domainName,
-        String spiInterfaceFqcn,
-        String spiInterfaceSimple,
+        String declaringTypeFqcn,
+        String declaringTypeSimple,
         String basePath,
         List<ResolvedOperation> operations
 ) {

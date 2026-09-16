@@ -39,7 +39,7 @@ public class McpDomainJandexScanner {
             if (ann.target().kind() != AnnotationTarget.Kind.CLASS) { continue; }
 
             ClassInfo classInfo = ann.target().asClass();
-            if (!java.lang.reflect.Modifier.isInterface(classInfo.flags())) { continue; }
+
 
             String domainName = ann.value().asString();
             String basePath = null;

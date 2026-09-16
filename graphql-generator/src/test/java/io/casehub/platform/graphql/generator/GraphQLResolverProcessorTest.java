@@ -604,6 +604,56 @@ class GraphQLResolverProcessorTest {
         assertThat(GraphQLResolverProcessor.resolveHttpVerb(GraphQLResolverProcessor.OperationType.STREAM, null)).isEqualTo("GET");
     }
 
+    @Test
+    void roundEnvScanDiscoversLocalClass() throws Exception {
+        var impl = com.google.testing.compile.JavaFileObjects.forSourceString(
+                "test.SimpleService",
+                """
+                package test;
+                import io.casehub.platform.api.mcp.McpDomain;
+                import io.casehub.platform.api.mcp.PlatformQuery;
+                import io.casehub.platform.api.mcp.PlatformMutation;
+                import java.util.List;
+                
+                @McpDomain("simple")
+                public class SimpleService {
+                    @PlatformQuery("List items")
+                    public List<String> listItems() { return List.of(); }
+                
+                    @PlatformMutation("Create item")
+                    public String createItem(String name) { return name; }
+                }
+                """);
+
+        var compilation = com.google.testing.compile.Compiler.javac()
+                                                             .withProcessors(new GraphQLResolverProcessor())
+                                                             .withOptions("-AdomainFilter=simple")
+                                                             .compile(impl);
+
+        var restSource = compilation.generatedSourceFile(
+                "io.casehub.platform.rest.generated.GeneratedSimpleResource");
+        assertThat(restSource).isPresent();
+
+        String restContent = restSource.get().getCharContent(true).toString();
+        assertThat(restContent).contains("class GeneratedSimpleResource");
+        assertThat(restContent).contains("@Path(\"/api/simple\")");
+        assertThat(restContent).contains("import test.SimpleService;");
+        assertThat(restContent).contains("SimpleService simpleService;");
+        assertThat(restContent).contains("public Response listItems(");
+        assertThat(restContent).contains("public Response createItem(");
+
+        var graphqlSource = compilation.generatedSourceFile(
+                "io.casehub.platform.graphql.generated.GeneratedSimpleResolver");
+        assertThat(graphqlSource).isPresent();
+
+        String gqlContent = graphqlSource.get().getCharContent(true).toString();
+        assertThat(gqlContent).contains("class GeneratedSimpleResolver");
+        assertThat(gqlContent).contains("SimpleService simpleService;");
+        assertThat(gqlContent).contains("@Query");
+        assertThat(gqlContent).contains("@Mutation");
+    }
+
+
     private static String decapitalize(String s) {
         if (s == null || s.isEmpty()) return s;
         return Character.toLowerCase(s.charAt(0)) + s.substring(1);

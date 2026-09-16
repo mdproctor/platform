@@ -6,11 +6,9 @@ import com.palantir.javapoet.FieldSpec;
 import com.palantir.javapoet.JavaFile;
 import com.palantir.javapoet.MethodSpec;
 import com.palantir.javapoet.ParameterSpec;
-import com.palantir.javapoet.TypeName;
 import com.palantir.javapoet.TypeSpec;
 import io.casehub.platform.generator.DomainScanResult;
 import io.casehub.platform.generator.GeneratorUtils;
-import io.casehub.platform.generator.OperationType;
 import io.casehub.platform.generator.ResolvedOperation;
 import io.casehub.platform.generator.ResolvedParam;
 
@@ -26,8 +24,8 @@ public class SpringGraphqlControllerWriter {
 
     public JavaFile generate(DomainScanResult domain, String targetPackage) {
         String className = GeneratorUtils.toPascalCase(domain.domainName()) + "GraphqlController";
-        ClassName spiType = ClassName.bestGuess(domain.spiInterfaceFqcn());
-        String fieldName = GeneratorUtils.decapitalize(domain.spiInterfaceSimple());
+        ClassName spiType = ClassName.bestGuess(domain.declaringTypeFqcn());
+        String fieldName = GeneratorUtils.decapitalize(domain.declaringTypeSimple());
 
         TypeSpec.Builder classBuilder = TypeSpec.classBuilder(className)
                 .addModifiers(Modifier.PUBLIC)

@@ -1,6 +1,5 @@
 package io.casehub.platform.graphql.spring.generator;
 
-import com.palantir.javapoet.JavaFile;
 import io.casehub.platform.generator.DomainScanResult;
 import io.casehub.platform.generator.McpDomainJandexScanner;
 import org.jboss.jandex.Index;
@@ -147,4 +146,56 @@ class SpringGeneratorWriterTest {
 
         assertThat(source).contains("status(201)");
     }
+
+    @Test
+    void scanFindsClassWithMcpDomain() throws Exception {
+        var indexer = new Indexer();
+        indexer.indexClass(SampleDomainImpl.class);
+        Index index = indexer.complete();
+
+        var scanner = new McpDomainJandexScanner();
+        var results = scanner.scan(index);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).domainName()).isEqualTo("sample-impl");
+        assertThat(results.get(0).declaringTypeFqcn()).contains("SampleDomainImpl");
+        assertThat(results.get(0).declaringTypeSimple()).isEqualTo("SampleDomainImpl");
+        assertThat(results.get(0).operations()).hasSize(3);
+    }
+
+    @Test
+    void classBasedDomainGeneratesGraphqlController() throws Exception {
+        var indexer = new Indexer();
+        indexer.indexClass(SampleDomainImpl.class);
+        Index index = indexer.complete();
+
+        var scanner    = new McpDomainJandexScanner();
+        var implDomain = scanner.scan(index).get(0);
+
+        var    writer = new SpringGraphqlControllerWriter();
+        String source = writer.generate(implDomain, "test.spring").toString();
+
+        assertThat(source).contains("@Controller");
+        assertThat(source).contains("class SampleImplGraphqlController");
+        assertThat(source).contains("SampleDomainImpl");
+    }
+
+    @Test
+    void classBasedDomainGeneratesRestController() throws Exception {
+        var indexer = new Indexer();
+        indexer.indexClass(SampleDomainImpl.class);
+        Index index = indexer.complete();
+
+        var scanner    = new McpDomainJandexScanner();
+        var implDomain = scanner.scan(index).get(0);
+
+        var    writer = new SpringDomainRestControllerWriter();
+        String source = writer.generate(implDomain, "test.spring").toString();
+
+        assertThat(source).contains("@RestController");
+        assertThat(source).contains("/api/sample-impl");
+        assertThat(source).contains("SampleDomainImpl");
+    }
+
+
 }

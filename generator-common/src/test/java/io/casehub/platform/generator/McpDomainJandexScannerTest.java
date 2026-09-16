@@ -27,7 +27,7 @@ class McpDomainJandexScannerTest {
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).domainName()).isEqualTo("test-domain");
-        assertThat(results.get(0).spiInterfaceSimple()).isEqualTo("SampleMcpDomain");
+        assertThat(results.get(0).declaringTypeSimple()).isEqualTo("SampleMcpDomain");
     }
 
     @Test

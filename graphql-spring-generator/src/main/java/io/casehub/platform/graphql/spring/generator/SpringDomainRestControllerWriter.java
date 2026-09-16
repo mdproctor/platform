@@ -43,8 +43,8 @@ public class SpringDomainRestControllerWriter {
 
     public JavaFile generate(DomainScanResult domain, String targetPackage) {
         String className = GeneratorUtils.toPascalCase(domain.domainName()) + "RestController";
-        ClassName spiType = ClassName.bestGuess(domain.spiInterfaceFqcn());
-        String fieldName = GeneratorUtils.decapitalize(domain.spiInterfaceSimple());
+        ClassName spiType = ClassName.bestGuess(domain.declaringTypeFqcn());
+        String fieldName = GeneratorUtils.decapitalize(domain.declaringTypeSimple());
 
         TypeSpec.Builder classBuilder = TypeSpec.classBuilder(className)
                 .addModifiers(Modifier.PUBLIC)

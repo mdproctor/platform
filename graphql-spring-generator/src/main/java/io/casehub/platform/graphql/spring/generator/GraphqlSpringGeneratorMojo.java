@@ -34,7 +34,7 @@ public class GraphqlSpringGeneratorMojo extends AbstractGeneratorMojo {
         List<DomainScanResult> domains = scanner.scan(index);
 
         if (domains.isEmpty()) {
-            getLog().info("No @McpDomain interfaces found — skipping generation.");
+            getLog().info("No @McpDomain types found — skipping generation.");
             return;
         }
 
@@ -57,7 +57,7 @@ public class GraphqlSpringGeneratorMojo extends AbstractGeneratorMojo {
 
             registerSourceRoot();
             getLog().info("Generated " + count + " Spring classes from "
-                    + domains.size() + " @McpDomain interface(s)");
+                    + domains.size() + " @McpDomain type(s)");
 
         } catch (IOException e) {
             throw new MojoExecutionException("Failed to generate Spring GraphQL controllers", e);

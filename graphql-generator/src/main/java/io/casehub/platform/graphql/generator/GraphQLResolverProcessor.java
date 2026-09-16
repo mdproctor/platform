@@ -85,7 +85,7 @@ public class GraphQLResolverProcessor extends AbstractProcessor {
         Set<String> restSkipMethods    = scanHandWrittenRestMethods(index, roundEnv);
 
         Map<String, DomainOperations> jandexDomains =
-                index != null ? scanAnnotatedInterfaces(index) : new HashMap<>();
+                index != null ? scanAnnotatedTypes(index) : new HashMap<>();
         Map<String, DomainOperations> roundEnvDomains = scanRoundEnvironment(roundEnv);
 
         Map<String, DomainOperations> allDomains = new HashMap<>(roundEnvDomains);
@@ -255,13 +255,13 @@ public class GraphQLResolverProcessor extends AbstractProcessor {
     }
 
 
-    private Map<String, DomainOperations> scanAnnotatedInterfaces(IndexView index) {
+    private Map<String, DomainOperations> scanAnnotatedTypes(IndexView index) {
         Map<String, DomainOperations> domains = new HashMap<>();
 
         for (AnnotationInstance ann : index.getAnnotations(MCP_DOMAIN)) {
             if (ann.target().kind() != AnnotationTarget.Kind.CLASS) {continue;}
             ClassInfo classInfo = ann.target().asClass();
-            if (!java.lang.reflect.Modifier.isInterface(classInfo.flags())) {continue;}
+
 
             String domain = ann.value().asString();
             DomainOperations ops = domains.computeIfAbsent(domain,
@@ -467,7 +467,8 @@ public class GraphQLResolverProcessor extends AbstractProcessor {
         }
 
         for (javax.lang.model.element.Element element : annotated) {
-            if (element.getKind() != javax.lang.model.element.ElementKind.INTERFACE) {continue;}
+            if (element.getKind() != javax.lang.model.element.ElementKind.INTERFACE
+                && element.getKind() != javax.lang.model.element.ElementKind.CLASS) {continue;}
             javax.lang.model.element.TypeElement typeElement =
                     (javax.lang.model.element.TypeElement) element;
 
