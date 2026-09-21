@@ -14,6 +14,7 @@ import org.jboss.logging.Logger;
 import org.springaicommunity.claude.agent.sdk.ClaudeAsyncClient;
 import org.springaicommunity.claude.agent.sdk.ClaudeClient;
 import org.springaicommunity.claude.agent.sdk.mcp.McpServerConfig;
+import org.springaicommunity.claude.agent.sdk.transport.CLIOptions;
 import org.springaicommunity.claude.agent.sdk.types.Message;
 import reactor.adapter.JdkFlowAdapter;
 import reactor.core.publisher.Flux;
@@ -44,41 +45,50 @@ public class ClaudeAgentClient {
     private final CopyOnWriteArraySet<ClaudeAsyncClient> activeSessions;
     private final ScheduledExecutorService timeoutScheduler;
     private final Function<AgentSessionConfig, Multi<AgentEvent>> streamFactory;
+    private final Map<String, String>                             env;
+
     private volatile boolean binaryAvailable = true;
 
     public ClaudeAgentClient(ClaudeAgentProperties properties) {
+        this(properties, Map.of());
+    }
+
+    public ClaudeAgentClient(ClaudeAgentProperties properties, Map<String, String> env) {
         this.properties = properties;
+        this.env        = env != null ? Map.copyOf(env) : Map.of();
         int maxSessions = properties.maxConcurrentSessions();
         if (maxSessions < 0) {
             throw new IllegalStateException(
-                "casehub.platform.agent.claude.max-concurrent-sessions must be >= 0, got " + maxSessions);
+                    "casehub.platform.agent.claude.max-concurrent-sessions must be >= 0, got " + maxSessions);
         }
-        this.semaphore = new Semaphore(maxSessions == 0 ? Integer.MAX_VALUE : maxSessions);
-        this.activeSessions = new CopyOnWriteArraySet<>();
+        this.semaphore        = new Semaphore(maxSessions == 0 ? Integer.MAX_VALUE : maxSessions);
+        this.activeSessions   = new CopyOnWriteArraySet<>();
         this.timeoutScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "casehub-agent-timeout");
             t.setDaemon(true);
             return t;
         });
-        this.streamFactory = null;
+        this.streamFactory    = null;
     }
+
 
     public ClaudeAgentClient(ClaudeAgentProperties properties,
                              Function<AgentSessionConfig, Multi<AgentEvent>> streamFactory) {
         this.properties = properties;
+        this.env        = Map.of();
         int maxSessions = properties.maxConcurrentSessions();
         if (maxSessions < 0) {
             throw new IllegalStateException(
-                "casehub.platform.agent.claude.max-concurrent-sessions must be >= 0, got " + maxSessions);
+                    "casehub.platform.agent.claude.max-concurrent-sessions must be >= 0, got " + maxSessions);
         }
-        this.semaphore = new Semaphore(maxSessions == 0 ? Integer.MAX_VALUE : maxSessions);
-        this.activeSessions = new CopyOnWriteArraySet<>();
+        this.semaphore        = new Semaphore(maxSessions == 0 ? Integer.MAX_VALUE : maxSessions);
+        this.activeSessions   = new CopyOnWriteArraySet<>();
         this.timeoutScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "casehub-agent-timeout");
             t.setDaemon(true);
             return t;
         });
-        this.streamFactory = streamFactory;
+        this.streamFactory    = streamFactory;
     }
 
     int availablePermits() {
@@ -148,18 +158,23 @@ public class ClaudeAgentClient {
             ? config.timeout()
             : properties.defaultTimeout();
 
-        ClaudeClient.AsyncSpec builder = ClaudeClient.async()
-            .workingDirectory(Path.of(System.getProperty("user.dir")))
+        var optionsBuilder = CLIOptions.builder()
             .systemPrompt(config.systemPrompt());
-
-        properties.binaryPath().ifPresent(builder::claudePath);
 
         Map<String, McpServerConfig> sdkMcpServers = toSdkMcpServers(config.mcpServers());
         if (!sdkMcpServers.isEmpty()) {
-            builder.mcpServers(sdkMcpServers);
+            optionsBuilder.mcpServers(sdkMcpServers);
         }
+        if (!env.isEmpty()) {
+            optionsBuilder.env(new HashMap<>(env));
+        }
+        CLIOptions cliOptions = optionsBuilder.build();
 
-        ClaudeAsyncClient sdkClient = builder.build();
+        var sessionBuilder = ClaudeClient.async(cliOptions)
+            .workingDirectory(Path.of(System.getProperty("user.dir")));
+        properties.binaryPath().ifPresent(sessionBuilder::claudePath);
+
+        ClaudeAsyncClient sdkClient = sessionBuilder.build();
         activeSessions.add(sdkClient);
 
         AtomicBoolean timedOut = new AtomicBoolean(false);
@@ -264,14 +279,18 @@ public class ClaudeAgentClient {
                 ? init.timeout()
                 : properties.defaultTimeout();
 
-            final ClaudeClient.AsyncSpec builder = ClaudeClient.async()
-                .workingDirectory(Path.of(System.getProperty("user.dir")))
+            var optionsBuilder = CLIOptions.builder()
                 .systemPrompt(init.systemPrompt());
-            properties.binaryPath().ifPresent(builder::claudePath);
             final Map<String, McpServerConfig> sdkMcpServers = toSdkMcpServers(init.mcpServers());
-            if (!sdkMcpServers.isEmpty()) builder.mcpServers(sdkMcpServers);
+            if (!sdkMcpServers.isEmpty()) optionsBuilder.mcpServers(sdkMcpServers);
+            if (!env.isEmpty()) optionsBuilder.env(new HashMap<>(env));
+            CLIOptions cliOptions = optionsBuilder.build();
 
-            final ClaudeAsyncClient sdkClient = builder.build();
+            var sessionBuilder = ClaudeClient.async(cliOptions)
+                .workingDirectory(Path.of(System.getProperty("user.dir")));
+            properties.binaryPath().ifPresent(sessionBuilder::claudePath);
+
+            final ClaudeAsyncClient sdkClient = sessionBuilder.build();
             activeSessions.add(sdkClient);
             if (init.correlationId() != null) {
                 LOG.infof("Agent session opened [correlationId=%s]", init.correlationId());

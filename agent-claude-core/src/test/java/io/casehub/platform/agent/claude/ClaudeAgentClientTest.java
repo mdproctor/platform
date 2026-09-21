@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -161,4 +162,18 @@ class ClaudeAgentClientTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("not available");
     }
+
+    @Test
+    void constructorAcceptsEnvMap() {
+        var env = Map.of("CLAUDE_CODE_USE_VERTEX", "1", "ANTHROPIC_VERTEX_PROJECT_ID", "my-project");
+        client = new ClaudeAgentClient(props(2), env);
+        assertThat(client.availablePermits()).isEqualTo(2);
+    }
+
+    @Test
+    void emptyEnvMap_backwardCompatible() {
+        client = new ClaudeAgentClient(props(2), Map.of());
+        assertThat(client.availablePermits()).isEqualTo(2);
+    }
+
 }
