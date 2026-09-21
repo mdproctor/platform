@@ -225,3 +225,49 @@ models:
     locality: CLOUD
     costTier: LOW
     authMethod: api-key
+
+  # --- Anthropic via Vertex AI ---
+  - id: claude-opus-5-vertex
+    apiModelId: claude-opus-5
+    backendKey: claude
+    instanceId: vertex
+    vendor: anthropic
+    family: claude
+    displayName: Claude Opus 5 (Vertex)
+    tier: FLAGSHIP
+    capabilities: [text, vision, tool-use, code, reasoning]
+    contextWindow: 200000
+    maxOutput: 32768
+    locality: CLOUD
+    costTier: PREMIUM
+    authMethod: gcp-adc
+
+  - id: claude-sonnet-5-vertex
+    apiModelId: claude-sonnet-5
+    backendKey: claude
+    instanceId: vertex
+    vendor: anthropic
+    family: claude
+    displayName: Claude Sonnet 5 (Vertex)
+    tier: STANDARD
+    capabilities: [text, vision, tool-use, code, reasoning]
+    contextWindow: 200000
+    maxOutput: 16384
+    locality: CLOUD
+    costTier: HIGH
+    authMethod: gcp-adc
+
+  - id: claude-haiku-4-5-vertex
+    apiModelId: claude-haiku-4-5
+    backendKey: claude
+    instanceId: vertex
+    vendor: anthropic
+    family: claude
+    displayName: Claude Haiku 4.5 (Vertex)
+    tier: FAST
+    capabilities: [text, vision, tool-use, code]
+    contextWindow: 200000
+    maxOutput: 8192
+    locality: CLOUD
+    costTier: LOW
+    authMethod: gcp-adc

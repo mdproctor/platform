@@ -65,4 +65,28 @@ class SeedCatalogModelSourceTest {
         assertThat(registry.resolveById("gpt-4.1")).isPresent();
         assertThat(registry.resolveById("llama-4-scout")).isPresent();
     }
+
+    @Test
+    void refresh_vertexSonnetPresent() {
+        var models = source.refresh();
+        var vertexSonnet = models.stream()
+                                 .filter(m -> m.id().equals("claude-sonnet-5-vertex"))
+                                 .findFirst().orElseThrow();
+        assertThat(vertexSonnet.apiModelId()).isEqualTo("claude-sonnet-5");
+        assertThat(vertexSonnet.backendInstanceId()).isEqualTo("vertex");
+        assertThat(vertexSonnet.backendKey()).isEqualTo("claude");
+        assertThat(vertexSonnet.authMethod()).isEqualTo("gcp-adc");
+        assertThat(vertexSonnet.vendor()).isEqualTo("anthropic");
+    }
+
+    @Test
+    void refresh_existingModelsRetainDefaults() {
+        var models = source.refresh();
+        var directSonnet = models.stream()
+                                 .filter(m -> m.id().equals("claude-sonnet-5"))
+                                 .findFirst().orElseThrow();
+        assertThat(directSonnet.apiModelId()).isEqualTo("claude-sonnet-5");
+        assertThat(directSonnet.backendInstanceId()).isNull();
+    }
+
 }
