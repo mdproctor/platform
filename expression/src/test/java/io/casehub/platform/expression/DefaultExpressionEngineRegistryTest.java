@@ -81,8 +81,10 @@ class DefaultExpressionEngineRegistryTest {
     }
 
     @Test
-    void resolveDefault_unregisteredContext_returnsNull() {
-        assertThat(registry.resolveDefault(io.casehub.platform.api.expression.ExpressionContext.CONDITION)).isNull();
+    void resolveDefault_constructorRegistersConventionDefaults() {
+        assertThat(registry.resolveDefault(io.casehub.platform.api.expression.ExpressionContext.CONDITION)).isEqualTo("mvel");
+        assertThat(registry.resolveDefault(io.casehub.platform.api.expression.ExpressionContext.TRANSFORM)).isEqualTo("jq");
+        assertThat(registry.resolveDefault(io.casehub.platform.api.expression.ExpressionContext.FILTER)).isEqualTo("jq");
     }
 
     @Test
