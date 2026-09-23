@@ -19,6 +19,9 @@ public class DefaultExpressionEngineRegistry implements ExpressionEngineRegistry
         for (ExpressionEngine engine : engines) {
             engineMap.put(engine.type(), engine);
         }
+        defaults.put(io.casehub.platform.api.expression.ExpressionContext.CONDITION, "mvel");
+        defaults.put(io.casehub.platform.api.expression.ExpressionContext.TRANSFORM, "jq");
+        defaults.put(io.casehub.platform.api.expression.ExpressionContext.FILTER, "jq");
     }
 
     @Override
