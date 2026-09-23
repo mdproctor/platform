@@ -9,7 +9,10 @@ import io.casehub.platform.delivery.NoOpDeliveryAttemptStore;
 import io.casehub.platform.delivery.NoOpDeliveryChannelRegistry;
 import io.casehub.platform.delivery.NoOpDigestBuffer;
 import io.casehub.platform.endpoints.NoOpEndpointRegistry;
+import io.casehub.platform.expression.NoOpActionRegistry;
+import io.casehub.platform.expression.NoOpBeanInvoker;
 import io.casehub.platform.expression.NoOpExpressionEngineRegistry;
+import io.casehub.platform.expression.NoOpInvocationPolicy;
 import io.casehub.platform.identity.NoOpActorDIDProvider;
 import io.casehub.platform.identity.NoOpCredentialValidator;
 import io.casehub.platform.identity.NoOpDIDResolver;
@@ -159,6 +162,15 @@ public class DefaultBeans {
 
     @Produces @DefaultBean @ApplicationScoped
     public NoOpExpressionEngineRegistry noOpExpressionEngineRegistry() { return new NoOpExpressionEngineRegistry(); }
+
+    @Produces @DefaultBean @ApplicationScoped
+    public NoOpBeanInvoker noOpBeanInvoker() { return new NoOpBeanInvoker(); }
+
+    @Produces @DefaultBean @ApplicationScoped
+    public NoOpInvocationPolicy noOpInvocationPolicy() { return new NoOpInvocationPolicy(); }
+
+    @Produces @DefaultBean @ApplicationScoped
+    public NoOpActionRegistry noOpActionRegistry() { return new NoOpActionRegistry(); }
 
     // --- Signing ---
 
