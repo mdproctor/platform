@@ -59,6 +59,8 @@ acl-admin
 acl-worker
 # Quarkus-specific NoSQL persistence
 persistence-mongodb
+# IS the Spring module itself
+persistence-spring-mongodb
 
 # LLM config — Quarkus-specific SmallRye config
 llm-config
