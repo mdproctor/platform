@@ -2,6 +2,7 @@ package io.casehub.platform.agent.config;
 
 import io.casehub.platform.api.credentials.CredentialResolver;
 import io.casehub.platform.api.credentials.LlmCredentialStore;
+import io.casehub.platform.api.identity.DIDResolver;
 import io.casehub.platform.api.model.MutableModelRegistry;
 import org.jboss.logging.Logger;
 
@@ -20,6 +21,8 @@ public class AgentConfigLoader {
     private final LocalModelReconciler reconciler;
     private final String profile;
     private final Path projectDir;
+    private final DIDResolver didResolver;
+    private final boolean allowInsecure;
 
     public AgentConfigLoader(LlmCredentialStore credentialStore,
                              MutableModelRegistry modelRegistry,
@@ -27,7 +30,9 @@ public class AgentConfigLoader {
                              Map<String, List<String>> vendorRequirements,
                              LocalModelReconciler reconciler,
                              String profile,
-                             Path projectDir) {
+                             Path projectDir,
+                             DIDResolver didResolver,
+                             boolean allowInsecure) {
         this.credentialStore = credentialStore;
         this.modelRegistry = modelRegistry;
         this.credentialResolver = credentialResolver;
@@ -35,11 +40,14 @@ public class AgentConfigLoader {
         this.reconciler = reconciler;
         this.profile = profile;
         this.projectDir = projectDir;
+        this.didResolver = didResolver;
+        this.allowInsecure = allowInsecure;
     }
 
     public ManifestResult load() {
         var resolver = new ManifestCredentialResolver(credentialResolver);
-        var loader = new ManifestLoader();
+        var securityConfig = new ManifestSecurityConfig(allowInsecure);
+        var loader = new ManifestLoader(resolver, didResolver, securityConfig);
         var manifest = loader.load(projectDir, profile);
 
         var processor = new ManifestProcessor(

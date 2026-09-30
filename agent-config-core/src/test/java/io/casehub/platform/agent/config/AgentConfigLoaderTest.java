@@ -33,7 +33,8 @@ class AgentConfigLoaderTest {
                 Map.of(),
                 modelId -> {},
                 null,
-                tempDir);
+                tempDir,
+                null, false);
 
         ManifestResult result = loader.load();
 
@@ -51,7 +52,8 @@ class AgentConfigLoaderTest {
                 Map.of(),
                 modelId -> {},
                 null,
-                tempDir);
+                tempDir,
+                null, false);
 
         ManifestResult result = loader.load();
 
