@@ -5,6 +5,7 @@ import io.casehub.platform.agent.config.LocalModelReconciler;
 import io.casehub.platform.agent.config.ManifestResult;
 import io.casehub.platform.api.credentials.CredentialResolver;
 import io.casehub.platform.api.credentials.LlmCredentialStore;
+import io.casehub.platform.api.identity.DIDResolver;
 import io.casehub.platform.api.model.MutableModelRegistry;
 import io.casehub.platform.llm.config.LlmConfigApi;
 import io.casehub.platform.llm.config.PullRequest;
@@ -17,6 +18,7 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import java.nio.file.Path;
@@ -34,14 +36,20 @@ public class AgentConfigBeans {
     @Inject CredentialResolver credentialResolver;
     @Inject @Any Instance<VendorClient> vendorClients;
     @Inject @Any Instance<LlmConfigApi> configApi;
+    @Inject @Any Instance<DIDResolver> didResolvers;
+
+    @ConfigProperty(name = "casehub.agent.manifest.allow-insecure", defaultValue = "false")
+    boolean allowInsecure;
 
     private ManifestResult result;
 
     void onStartup(@Observes @Priority(50) StartupEvent event) {
+        var didResolver = didResolvers.isResolvable() ? didResolvers.get() : null;
         var loader = new AgentConfigLoader(
                 credentialStore, modelRegistry, credentialResolver,
                 buildVendorRequirements(), buildReconciler(),
-                resolveProfile(), Path.of(System.getProperty("user.dir")));
+                resolveProfile(), Path.of(System.getProperty("user.dir")),
+                didResolver, allowInsecure);
         this.result = loader.load();
     }
 
