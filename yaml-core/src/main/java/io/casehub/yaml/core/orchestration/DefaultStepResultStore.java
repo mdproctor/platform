@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class DefaultStepResultStore implements StepResultStore {
 
     private final ConcurrentHashMap<String, Map<String, Object>> results = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, StepError> errors = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, io.casehub.yaml.core.error.YamlError> errors = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Boolean> completed = new ConcurrentHashMap<>();
 
     @Override
@@ -16,7 +16,7 @@ public final class DefaultStepResultStore implements StepResultStore {
     }
 
     @Override
-    public void recordFailure(String stepName, StepError error) {
+    public void recordFailure(String stepName, io.casehub.yaml.core.error.YamlError error) {
         errors.put(stepName, error);
         completed.put(stepName, true);
     }
@@ -27,7 +27,7 @@ public final class DefaultStepResultStore implements StepResultStore {
     }
 
     @Override
-    public StepError error(String stepName) {
+    public io.casehub.yaml.core.error.YamlError error(String stepName) {
         return errors.get(stepName);
     }
 

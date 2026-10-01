@@ -19,7 +19,7 @@ class DefaultStepResultStoreTest {
     @Test
     void recordFailure_retrievable() {
         var store = new DefaultStepResultStore();
-        var error = new StepError("failed", "RuntimeException", "at Test.run");
+        var error = new io.casehub.yaml.core.error.RuntimeStepError.StepActionError("step1", null, "failed", io.casehub.yaml.core.error.SourceLocation.UNKNOWN, null);
         store.recordFailure("step1", error);
         assertThat(store.error("step1")).isEqualTo(error);
     }
@@ -47,7 +47,7 @@ class DefaultStepResultStoreTest {
     @Test
     void hasCompleted_afterFailure_true() {
         var store = new DefaultStepResultStore();
-        store.recordFailure("step1", new StepError("err", "E", ""));
+        store.recordFailure("step1", new io.casehub.yaml.core.error.RuntimeStepError.StepActionError("step1", null, "err", io.casehub.yaml.core.error.SourceLocation.UNKNOWN, null));
         assertThat(store.hasCompleted("step1")).isTrue();
     }
 

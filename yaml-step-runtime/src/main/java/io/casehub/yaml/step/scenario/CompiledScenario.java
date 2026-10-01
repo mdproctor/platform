@@ -81,7 +81,9 @@ public record CompiledScenario(
                 } else {
                     String message = result instanceof Result.Failure f ? f.message() : "unknown error";
                     scope.resultStore().recordFailure(stepName,
-                            new io.casehub.yaml.core.orchestration.StepError(message, null, null));
+                            new io.casehub.yaml.core.error.RuntimeStepError.StepActionError(
+                                    stepName, null, message,
+                                    io.casehub.yaml.core.error.SourceLocation.UNKNOWN, null));
                     return result;
                 }
             }

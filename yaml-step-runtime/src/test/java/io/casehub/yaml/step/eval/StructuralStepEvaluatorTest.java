@@ -753,8 +753,8 @@ class StructuralStepEvaluatorTest {
             assertThat(scope.resultStore().hasCompleted("risk-eval")).isTrue();
             assertThat(scope.resultStore().result("risk-eval")).isNull();
             assertThat(scope.resultStore().error("risk-eval")).isNotNull();
-            assertThat(scope.resultStore().error("risk-eval").message())
-                    .isEqualTo("connection timeout");
+            assertThat(scope.resultStore().error("risk-eval").summary())
+                    .contains("connection timeout");
         }
 
         @Test
@@ -848,7 +848,7 @@ class StructuralStepEvaluatorTest {
             assertThat(errorMap).isInstanceOf(Map.class);
             @SuppressWarnings("unchecked")
             var error = (Map<String, Object>) errorMap;
-            assertThat(error).containsEntry("message", "timeout");
+            assertThat((String) error.get("message")).contains("timeout");
         }
 
         @Test

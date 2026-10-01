@@ -397,7 +397,9 @@ public final class StructuralStepEvaluator {
         } else {
             String message = result instanceof Result.Failure f ? f.message() : "unknown error";
             store.recordFailure(stepName,
-                                new io.casehub.yaml.core.orchestration.StepError(message, null, null));
+                                new io.casehub.yaml.core.error.RuntimeStepError.StepActionError(
+                                        stepName, null, message,
+                                        io.casehub.yaml.core.error.SourceLocation.UNKNOWN, null));
         }
 
         java.util.List<io.casehub.yaml.core.orchestration.OrcLatch> latches = stepLatches.get(stepName);
@@ -418,20 +420,20 @@ public final class StructuralStepEvaluator {
         return name -> {
             if (!store.hasCompleted(name)) {return null;}
             Map<String, Object>                          output = store.result(name);
-            io.casehub.yaml.core.orchestration.StepError err    = store.error(name);
+            io.casehub.yaml.core.error.YamlError err = store.error(name);
             if (output == null && err == null) {return null;}
             if (output == null) {
                 return Map.of("error", Map.of(
-                        "message", err.message() != null ? err.message() : "",
-                        "exceptionClass", err.exceptionClass() != null ? err.exceptionClass() : "",
-                        "stackTrace", err.stackTrace() != null ? err.stackTrace() : ""));
+                        "message", err.summary(),
+                        "category", err.category().name(),
+                        "step", err.stepName() != null ? err.stepName() : ""));
             }
             if (err == null) {return output;}
             var composite = new java.util.HashMap<>(output);
             composite.put("error", Map.of(
-                    "message", err.message() != null ? err.message() : "",
-                    "exceptionClass", err.exceptionClass() != null ? err.exceptionClass() : "",
-                    "stackTrace", err.stackTrace() != null ? err.stackTrace() : ""));
+                    "message", err.summary(),
+                    "category", err.category().name(),
+                    "step", err.stepName() != null ? err.stepName() : ""));
             return composite;
         };
     }
