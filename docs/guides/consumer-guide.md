@@ -99,6 +99,44 @@ Callers inject `AgentProvider` — the `RoutingAgentProvider` resolves the `mode
 | `casehub-platform-agent-langchain4j` | AgentBackend "langchain4j" -- bidirectional LangChain4j interop |
 | `casehub-platform-agent-gate` | CDI `@Decorator` rate limiter -- wraps `RoutingAgentProvider` transparently |
 
+#### Securing remote manifest sources
+
+The `sources:` section in `agent-config.yaml` supports authentication headers and content integrity verification for remote model catalogs. All fields are optional — existing manifests without `auth:` or `integrity:` blocks continue to work unchanged.
+
+**Authentication** — typed `auth:` block with `bearer`, `header`, or `basic` types:
+
+```yaml
+sources:
+  - uri: https://corp.example/approved-models.yaml
+    priority: 40
+    auth:
+      type: bearer
+      credential: ref:vault/catalog-token
+
+  - uri: https://partner.example/models.yaml
+    priority: 45
+    auth:
+      type: header
+      credential: env:PARTNER_API_KEY
+      header-name: X-Api-Key
+```
+
+**Content integrity** — SHA-256 digest with optional DID-based signature:
+
+```yaml
+sources:
+  - uri: https://registry.example/models.yaml
+    priority: 50
+    integrity:
+      digest: sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
+      signature: dGVzdHNpZ25hdHVyZQ          # optional, base64url-encoded
+      signer: did:web:registry.example        # required when signature is present
+```
+
+**HTTPS enforcement** — HTTP is auto-allowed for loopback/private addresses. Public HTTP is rejected by default. Override for local dev: `casehub.agent.manifest.allow-insecure=true`.
+
+**Fail-closed posture** — declared auth without a credential resolver, digest mismatch, or signature verification failure all reject the source (ERROR log). Missing fields mean no check — only declared intent is enforced.
+
 ### Simulation
 
 Complete SPI testing framework — replaces Mockito for platform SPI tests. Configurable simulation for any SPI: real responses when you have a real backend, simulated responses when you don't, captured traffic when you want to build a corpus, and a verification API for asserting SPI interactions. See the [Simulation Guide](simulation-guide.md) for full documentation.
