@@ -353,7 +353,7 @@ class StepWalkerTest {
         Map<String, Object> caseEntry = new LinkedHashMap<>();
         caseEntry.put("pattern", Map.of("type", "trade"));
         caseEntry.put("guard", "${match.amount} > 1000000");
-        caseEntry.put("steps", List.of(Map.of("process", Map.of("command", "escalate.sh"))));
+        caseEntry.put("do", List.of(Map.of("process", Map.of("command", "escalate.sh"))));
 
         Map<String, Object> defaultEntry = new LinkedHashMap<>();
         defaultEntry.put("default", List.of(Map.of("process", Map.of("command", "log.sh"))));
@@ -431,7 +431,7 @@ class StepWalkerTest {
         defaultEntry.put("default", List.of(Map.of("process", Map.of("command", "log.sh"))));
         Map<String, Object> caseEntry = new LinkedHashMap<>();
         caseEntry.put("pattern", "ACTIVE");
-        caseEntry.put("steps", List.of(Map.of("process", Map.of("command", "a.sh"))));
+        caseEntry.put("do", List.of(Map.of("process", Map.of("command", "a.sh"))));
 
         Map<String, Object> step = new LinkedHashMap<>();
         step.put("match", "${status}");
@@ -447,7 +447,7 @@ class StepWalkerTest {
     void rejectsCaseWithoutPatternOrDefault() {
         Map<String, Object> caseEntry = new LinkedHashMap<>();
         caseEntry.put("guard", "${match.amount} > 1000");
-        caseEntry.put("steps", List.of(Map.of("process", Map.of("command", "a.sh"))));
+        caseEntry.put("do", List.of(Map.of("process", Map.of("command", "a.sh"))));
 
         Map<String, Object> step = new LinkedHashMap<>();
         step.put("match", "${status}");
@@ -485,7 +485,7 @@ class StepWalkerTest {
     void warnsWhenMatchHasNoDefault() {
         Map<String, Object> caseEntry = new LinkedHashMap<>();
         caseEntry.put("pattern", "ACTIVE");
-        caseEntry.put("steps", List.of(Map.of("process", Map.of("command", "a.sh"))));
+        caseEntry.put("do", List.of(Map.of("process", Map.of("command", "a.sh"))));
 
         Map<String, Object> step = new LinkedHashMap<>();
         step.put("match", "${status}");
@@ -523,7 +523,7 @@ class StepWalkerTest {
     void noWarningWhenMatchHasDefault() {
         Map<String, Object> caseEntry = new LinkedHashMap<>();
         caseEntry.put("pattern", "ACTIVE");
-        caseEntry.put("steps", List.of(Map.of("process", Map.of("command", "a.sh"))));
+        caseEntry.put("do", List.of(Map.of("process", Map.of("command", "a.sh"))));
 
         Map<String, Object> defaultEntry = new LinkedHashMap<>();
         defaultEntry.put("default", List.of(Map.of("process", Map.of("command", "log.sh"))));
@@ -645,9 +645,9 @@ class StepWalkerTest {
         var step = new LinkedHashMap<String, Object>();
         step.put("select", List.of(
                 Map.of("subscribe", Map.of("channel", "quotes"),
-                       "steps", List.of(Map.of("process", Map.of("cmd", "handle")))),
+                       "do", List.of(Map.of("process", Map.of("cmd", "handle")))),
                 Map.of("wait", "timeout",
-                       "steps", List.of(Map.of("process", Map.of("cmd", "fallback"))))));
+                       "do", List.of(Map.of("process", Map.of("cmd", "fallback"))))));
 
         List<ResolvedStep> resolved = StepWalker.resolve(List.of(step), registry);
         assertThat(resolved).hasSize(1);

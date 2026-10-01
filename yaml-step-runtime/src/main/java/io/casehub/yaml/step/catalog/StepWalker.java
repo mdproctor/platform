@@ -309,10 +309,14 @@ public final class StepWalker {
                 } else {
                     pattern = new io.casehub.yaml.core.step.MatchPattern.ValuePattern(patternObj);
                 }
+                if (caseMap.containsKey("steps")) {
+                    throw new IllegalArgumentException(
+                            casePath + ": 'steps' is no longer valid in match cases — use 'do' instead");
+                }
                 String guard = caseMap.containsKey("guard")
                                ? String.valueOf(caseMap.get("guard")) : null;
-                var steps = caseMap.containsKey("steps")
-                            ? (List<Map<String, Object>>) caseMap.get("steps")
+                var steps = caseMap.containsKey("do")
+                            ? (List<Map<String, Object>>) caseMap.get("do")
                             : List.<Map<String, Object>>of();
                 result.add(new ResolvedMatchCase(pattern, guard, resolve(steps, registry, depth + 1, casePath, seenNames)));
             }
@@ -353,8 +357,12 @@ public final class StepWalker {
                 throw new IllegalArgumentException(
                         branchPath + ": select branch must contain 'subscribe' or 'wait'");
             }
-            var steps = branchMap.containsKey("steps")
-                        ? (List<Map<String, Object>>) branchMap.get("steps")
+            if (branchMap.containsKey("steps")) {
+                throw new IllegalArgumentException(
+                        branchPath + ": 'steps' is no longer valid in select branches — use 'do' instead");
+            }
+            var steps = branchMap.containsKey("do")
+                        ? (List<Map<String, Object>>) branchMap.get("do")
                         : List.<Map<String, Object>>of();
             result.add(new ResolvedStep.SelectBranch(
                     type, name, resolve(steps, registry, depth + 1, branchPath, seenNames)));
