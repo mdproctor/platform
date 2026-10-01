@@ -1,1 +1,2 @@
+io.casehub.platform.agent.config.spring.AgentConfigManualConfig
 io.casehub.platform.agent.gate.spring.AgentGateSpringAutoConfiguration
