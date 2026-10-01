@@ -1,7 +1,7 @@
 package io.casehub.yaml.step.catalog;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.casehub.yaml.jackson.YamlMappers;
 import io.casehub.yaml.core.step.Declaration;
 import io.casehub.yaml.core.step.DeclarationFile;
 import io.casehub.yaml.core.step.DeclarationParser;
@@ -55,7 +55,7 @@ public class YamlStepDefinitionSource {
 
         Map<String, Object> raw;
         try (is) {
-            ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+            ObjectMapper yamlMapper = YamlMappers.create();
             raw = yamlMapper.readValue(is, Map.class);
         }
 

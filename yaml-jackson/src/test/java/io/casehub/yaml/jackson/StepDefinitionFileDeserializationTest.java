@@ -1,7 +1,7 @@
 package io.casehub.yaml.jackson;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+
 import io.casehub.yaml.core.step.InvokeBinding;
 import io.casehub.yaml.core.step.Declaration;
 import io.casehub.yaml.core.step.DeclarationFile;
@@ -20,8 +20,7 @@ class DeclarationFileDeserializationTest {
 
     @BeforeEach
     void setUp() {
-        yamlMapper = new ObjectMapper(new YAMLFactory());
-        yamlMapper.registerModule(new YamlCoreJacksonModule());
+        yamlMapper = YamlMappers.createWithCoreModule();
     }
 
     private static final String STEP_YAML = """

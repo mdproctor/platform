@@ -1,7 +1,7 @@
 package io.casehub.yaml.jackson;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+
 import io.casehub.yaml.core.module.YamlModuleFile;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,8 +14,7 @@ class YamlImportMixinTest {
 
     @BeforeEach
     void setUp() {
-        mapper = new ObjectMapper(new YAMLFactory());
-        mapper.registerModule(new YamlCoreJacksonModule());
+        mapper = YamlMappers.createWithCoreModule();
     }
 
     @Test

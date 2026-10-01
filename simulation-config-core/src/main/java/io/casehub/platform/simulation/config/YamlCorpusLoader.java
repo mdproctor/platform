@@ -1,7 +1,7 @@
 package io.casehub.platform.simulation.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.casehub.yaml.jackson.YamlMappers;
 import io.casehub.platform.simulation.InvocationRecord;
 
 import java.io.IOException;
@@ -14,7 +14,7 @@ import java.util.Map;
 
 public class YamlCorpusLoader implements CorpusLoader {
 
-    private static final ObjectMapper YAML_MAPPER = new ObjectMapper(new YAMLFactory());
+    private static final ObjectMapper YAML_MAPPER = YamlMappers.create();
 
     @Override
     public boolean supports(String path) {

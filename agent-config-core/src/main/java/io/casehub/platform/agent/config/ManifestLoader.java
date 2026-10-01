@@ -2,7 +2,7 @@ package io.casehub.platform.agent.config;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.casehub.yaml.jackson.YamlMappers;
 import io.casehub.platform.api.model.ModelDescriptor;
 import org.jboss.logging.Logger;
 
@@ -34,7 +34,7 @@ public class ManifestLoader {
 
 
     public ManifestLoader() {
-        this.mapper = new ObjectMapper(new YAMLFactory())
+        this.mapper = YamlMappers.create()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 

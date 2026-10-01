@@ -17,7 +17,7 @@ package io.casehub.yaml.codegen;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.casehub.yaml.jackson.YamlMappers;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -45,7 +45,7 @@ public record MappingConfig(
 
     public static MappingConfig load(File file) {
         try {
-            ObjectMapper yaml = new ObjectMapper(new YAMLFactory());
+            ObjectMapper yaml = YamlMappers.create();
             JsonNode     root = yaml.readTree(file);
 
             List<String> annotations = new ArrayList<>();

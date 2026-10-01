@@ -17,7 +17,7 @@ package io.casehub.yaml.codegen;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.casehub.yaml.jackson.YamlMappers;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -28,7 +28,7 @@ import java.util.Map;
 
 public class SchemaParser {
 
-    private final ObjectMapper yaml = new ObjectMapper(new YAMLFactory());
+    private final ObjectMapper yaml = YamlMappers.create();
 
     public TypeGraph parse(File schemaFile) {
         try {

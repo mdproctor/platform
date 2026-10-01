@@ -1,7 +1,7 @@
 package io.casehub.yaml.jackson;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+
 import io.casehub.yaml.core.step.MatchCase;
 import io.casehub.yaml.core.step.MatchPattern;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,8 +18,7 @@ class MatchPatternDeserializerTest {
 
     @BeforeEach
     void setUp() {
-        mapper = new ObjectMapper(new YAMLFactory());
-        mapper.registerModule(new YamlCoreJacksonModule());
+        mapper = YamlMappers.createWithCoreModule();
     }
 
     @Test

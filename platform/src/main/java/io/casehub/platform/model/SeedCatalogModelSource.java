@@ -2,7 +2,7 @@ package io.casehub.platform.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.casehub.yaml.jackson.YamlMappers;
 import io.casehub.platform.api.model.CostTier;
 import io.casehub.platform.api.model.ModelDescriptor;
 import io.casehub.platform.api.model.ModelLocality;
@@ -25,7 +25,7 @@ public class SeedCatalogModelSource implements ModelSource {
 
     private static final Logger LOG = Logger.getLogger(SeedCatalogModelSource.class);
     private static final String CATALOG_PATH = "models/seed-catalog.yaml";
-    private final ObjectMapper yaml = new ObjectMapper(new YAMLFactory());
+    private final ObjectMapper yaml = YamlMappers.create();
 
     @Override
     public String sourceId() { return "seed-catalog"; }
