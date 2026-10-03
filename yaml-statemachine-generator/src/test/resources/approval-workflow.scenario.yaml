@@ -1,0 +1,25 @@
+events:
+  submit:
+    fields:
+      amount: number
+  approve:
+    fields:
+      count: integer
+  reject:
+    fields:
+      reason: string
+
+states:
+  DRAFT:
+    - on:
+        submit:
+          to: REVIEW
+          when: "amount > 0"
+  REVIEW:
+    - on:
+        approve:
+          to: APPROVED
+          when: "count >= 2"
+        reject: REJECTED
+  APPROVED: terminal
+  REJECTED: terminal

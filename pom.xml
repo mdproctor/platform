@@ -160,6 +160,7 @@
         <module>yaml-plugin-api</module>
         <module>schema-generator</module>
         <module>yaml-plugin-processor</module>
+        <module>yaml-statemachine-generator</module>
         <module>yaml-step-runtime</module>
         <module>yaml-step-testing</module>
         <module>drift-detection</module>

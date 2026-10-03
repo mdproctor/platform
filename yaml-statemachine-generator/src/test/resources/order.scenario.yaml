@@ -1,0 +1,28 @@
+events:
+  submit:
+    fields:
+      amount: number
+      customer: string
+  approve:
+    fields:
+      count: integer
+      approver: string
+  reject:
+    fields:
+      reason: string
+
+states:
+  IDLE:
+    - on:
+        submit:
+          to: PENDING
+          when: "amount > 0"
+    - validate.order: {}
+  PENDING:
+    - on:
+        approve:
+          to: APPROVED
+          when: "count >= 2"
+        reject: REJECTED
+  APPROVED: terminal
+  REJECTED: terminal
