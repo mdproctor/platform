@@ -70,9 +70,8 @@ public record CompiledScenario(
                 var stepName = entry.getKey();
                 var params = entry.getValue() instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.<String, Object>of();
 
-                var definition = io.casehub.yaml.plugin.api.Definition.of(stepName).execute((p, r) -> Result.of(Map.of())).build();
                 var pluginStep = new io.casehub.yaml.step.catalog.ResolvedStep.PluginStep(
-                        stepName, definition, params, Map.of());
+                        null, stepName, params, Map.of());
 
                 var result = runner.run(pluginStep, resolver);
 

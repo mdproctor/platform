@@ -35,7 +35,7 @@ class StepWalkerTest {
         assertThat(resolved).hasSize(1);
         assertThat(resolved.get(0)).isInstanceOf(ResolvedStep.PluginStep.class);
         var plugin = (ResolvedStep.PluginStep) resolved.get(0);
-        assertThat(plugin.definition().name()).isEqualTo("process");
+        assertThat(plugin.actionName()).isEqualTo("process");
         assertThat(plugin.params()).containsEntry("command", "deploy.sh");
         assertThat(plugin.decorators()).isEmpty();
     }
@@ -76,7 +76,7 @@ class StepWalkerTest {
         List<ResolvedStep> resolved = StepWalker.resolve(List.of(step), registry);
 
         var plugin = (ResolvedStep.PluginStep) resolved.get(0);
-        assertThat(plugin.definition().name()).isEqualTo("process");
+        assertThat(plugin.actionName()).isEqualTo("process");
         assertThat(plugin.decorators()).doesNotContainKey("step");
     }
 
@@ -261,9 +261,9 @@ class StepWalkerTest {
         List<ResolvedStep> resolved = StepWalker.resolve(List.of(step1, step2), registry);
 
         assertThat(resolved).hasSize(2);
-        assertThat(((ResolvedStep.PluginStep) resolved.get(0)).definition().name())
+        assertThat(((ResolvedStep.PluginStep) resolved.get(0)).actionName())
                 .isEqualTo("process");
-        assertThat(((ResolvedStep.PluginStep) resolved.get(1)).definition().name())
+        assertThat(((ResolvedStep.PluginStep) resolved.get(1)).actionName())
                 .isEqualTo("assert");
     }
 

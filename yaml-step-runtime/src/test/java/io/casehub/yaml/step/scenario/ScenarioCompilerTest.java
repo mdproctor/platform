@@ -33,7 +33,7 @@ class ScenarioCompilerTest {
 
         StepRunner runner = (step, resolver) -> {
             if (step instanceof ResolvedStep.PluginStep ps) {
-                executionLog.add(ps.definition().name());
+                executionLog.add(ps.actionName());
             }
             return Result.of(Map.of());
         };
@@ -61,8 +61,8 @@ class ScenarioCompilerTest {
 
         StepRunner runner = (step, resolver) -> {
             if (step instanceof ResolvedStep.PluginStep ps) {
-                executionLog.add(ps.definition().name());
-                if ("failing-step".equals(ps.definition().name())) {
+                executionLog.add(ps.actionName());
+                if ("failing-step".equals(ps.actionName())) {
                     return Result.failed("step failed");
                 }
             }
@@ -128,10 +128,10 @@ class ScenarioCompilerTest {
 
         StepRunner runner = (step, resolver) -> {
             if (step instanceof ResolvedStep.PluginStep ps) {
-                if ("producer".equals(ps.definition().name())) {
+                if ("producer".equals(ps.actionName())) {
                     return Result.of(Map.of("value", "hello"));
                 }
-                if ("consumer".equals(ps.definition().name())) {
+                if ("consumer".equals(ps.actionName())) {
                     Object val = resolver.resolve("${result.producer.value}");
                     captured.add(String.valueOf(val));
                     return Result.of(Map.of());

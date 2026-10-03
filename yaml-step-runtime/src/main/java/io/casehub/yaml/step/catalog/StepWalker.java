@@ -1,6 +1,5 @@
 package io.casehub.yaml.step.catalog;
 
-import io.casehub.yaml.plugin.api.Definition;
 import io.casehub.yaml.plugin.api.PluginRegistry;
 
 import java.util.ArrayList;
@@ -64,7 +63,6 @@ public final class StepWalker {
         Map<String, Object> companions    = new LinkedHashMap<>();
         Map<String, Object> invokeSpec    = null;
         String              matchedAction = null;
-        Definition          matchedEntry  = null;
         Map<String, Object> actionParams  = null;
 
         String  structuralType  = null;
@@ -105,7 +103,6 @@ public final class StepWalker {
                                 + matchedAction + "' and '" + key + "'");
                     }
                     matchedAction = key;
-                    matchedEntry  = entry.get();
                     actionParams  = e.getValue() instanceof Map
                                     ? (Map<String, Object>) e.getValue()
                                     : Map.of();
@@ -252,8 +249,8 @@ public final class StepWalker {
             return new ResolvedStep.QuorumStep(stepName, required, ofList,
                     io.casehub.yaml.core.orchestration.DurationParser.parseOrNull(timeoutStr), decorators);
         }
-        if (matchedEntry != null) {
-            return new ResolvedStep.PluginStep(stepName, matchedEntry, actionParams, decorators);
+        if (matchedAction != null) {
+            return new ResolvedStep.PluginStep(stepName, matchedAction, actionParams, decorators);
         }
         if (invokeSpec != null) {
             return new ResolvedStep.InvokeStep(stepName, invokeSpec, decorators);
