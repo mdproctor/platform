@@ -157,4 +157,38 @@ class ScenarioParserTest {
         assertThat(matchBased.cases().get(0).match()).containsEntry("severity", "critical");
         assertThat(matchBased.cases().get(2).match()).isNull();
     }
+
+    @Test
+    void parsesMultiDocumentFrontMatter() {
+        String yaml = """
+                scenario: test-scenario
+                ---
+                states:
+                  idle:
+                    - next: done
+                  done: terminal
+                """;
+
+        ScenarioDefinition def = ScenarioParser.parseYaml(yaml);
+
+        assertThat(def.name()).isEqualTo("test-scenario");
+        assertThat(def.states()).containsKey("idle");
+        assertThat(def.states()).containsKey("done");
+    }
+
+    @Test
+    void parseYaml_singleDocument_backwardCompatible() {
+        String yaml = """
+                scenario: legacy
+                states:
+                  start:
+                    - next: end
+                  end: terminal
+                """;
+
+        ScenarioDefinition def = ScenarioParser.parseYaml(yaml);
+
+        assertThat(def.name()).isEqualTo("legacy");
+        assertThat(def.states()).containsKey("start");
+    }
 }

@@ -13,6 +13,32 @@ public final class ScenarioParser {
     private ScenarioParser() {}
 
     @SuppressWarnings("unchecked")
+    public static ScenarioDefinition parseYaml(String yaml) {
+        var loader = new org.yaml.snakeyaml.Yaml();
+        var documents = new java.util.ArrayList<Object>();
+        for (Object doc : loader.loadAll(yaml)) {
+            documents.add(doc);
+        }
+
+        if (documents.size() == 1) {
+            var root = (Map<String, Object>) documents.get(0);
+            var name = (String) root.getOrDefault("scenario", "unnamed");
+            return parse(name, root);
+        }
+
+        var meta = (Map<String, Object>) documents.get(0);
+        var name = (String) meta.getOrDefault("scenario", "unnamed");
+        var content = documents.get(1);
+
+        if (content instanceof Map) {
+            return parse(name, (Map<String, Object>) content);
+        }
+
+        throw new IllegalArgumentException(
+                "Second YAML document must be a mapping (states or metadata)");
+    }
+
+    @SuppressWarnings("unchecked")
     public static ScenarioDefinition parse(String name, Map<String, Object> root) {
         var statesRaw = (Map<String, Object>) root.get("states");
         if (statesRaw == null) {
