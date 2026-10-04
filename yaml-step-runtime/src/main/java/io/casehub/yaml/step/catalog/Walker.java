@@ -23,10 +23,22 @@ public final class Walker {
             "parallel", "semaphore", "barrier", "quorum", "race");
 
     private static final Set<String> STRUCTURAL_COMPANIONS = Set.of("then", "else", "cases", "catch", "finally");
+    private static final Set<String> REMOVED_KEYS = Set.of("steps", "do");
     static final         int         MAX_DEPTH             = 32;
 
 
     private Walker() {}
+
+    private static Map<String, Object> stripKeys(
+            Map<String, Object> map, Set<String> keysToStrip) {
+        var result = new LinkedHashMap<String, Object>();
+        for (var e : map.entrySet()) {
+            if (!keysToStrip.contains(e.getKey())) {
+                result.put(e.getKey(), e.getValue());
+            }
+        }
+        return result;
+    }
 
     public static List<ResolvedStep> resolve(
             List<Map<String, Object>> steps, PluginRegistry registry) {
@@ -57,6 +69,14 @@ public final class Walker {
         if (step.isEmpty()) {
             throw new IllegalArgumentException(
                     path + " → Step " + index + ": empty step map");
+        }
+
+        for (String key : step.keySet()) {
+            if (REMOVED_KEYS.contains(key)) {
+                throw new IllegalArgumentException(
+                        path + " → Step " + index + ": '" + key
+                        + "' is no longer valid — use inline sibling keys, or 'block' for multiple actions");
+            }
         }
 
         Map<String, Object> decorators    = new LinkedHashMap<>();

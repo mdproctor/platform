@@ -667,4 +667,24 @@ class WalkerTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("select branch must contain 'subscribe' or 'wait'");
     }
+
+    @Test
+    void rejectsStepsKeyAtStepLevel() {
+        Map<String, Object> step = new LinkedHashMap<>();
+        step.put("steps", List.of(Map.of("process", Map.of("command", "go.sh"))));
+
+        assertThatThrownBy(() -> Walker.resolve(List.of(step), registry))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("'steps' is no longer valid");
+    }
+
+    @Test
+    void rejectsDoKeyAtStepLevel() {
+        Map<String, Object> step = new LinkedHashMap<>();
+        step.put("do", List.of(Map.of("process", Map.of("command", "go.sh"))));
+
+        assertThatThrownBy(() -> Walker.resolve(List.of(step), registry))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("'do' is no longer valid");
+    }
 }
