@@ -351,7 +351,7 @@ class WalkerTest {
         Map<String, Object> caseEntry = new LinkedHashMap<>();
         caseEntry.put("pattern", Map.of("type", "trade"));
         caseEntry.put("guard", "${match.amount} > 1000000");
-        caseEntry.put("do", List.of(Map.of("process", Map.of("command", "escalate.sh"))));
+        caseEntry.put("process", Map.of("command", "escalate.sh"));
 
         Map<String, Object> defaultEntry = new LinkedHashMap<>();
         defaultEntry.put("default", List.of(Map.of("process", Map.of("command", "log.sh"))));
@@ -429,7 +429,7 @@ class WalkerTest {
         defaultEntry.put("default", List.of(Map.of("process", Map.of("command", "log.sh"))));
         Map<String, Object> caseEntry = new LinkedHashMap<>();
         caseEntry.put("pattern", "ACTIVE");
-        caseEntry.put("do", List.of(Map.of("process", Map.of("command", "a.sh"))));
+        caseEntry.put("process", Map.of("command", "a.sh"));
 
         Map<String, Object> step = new LinkedHashMap<>();
         step.put("match", "${status}");
@@ -445,7 +445,7 @@ class WalkerTest {
     void rejectsCaseWithoutPatternOrDefault() {
         Map<String, Object> caseEntry = new LinkedHashMap<>();
         caseEntry.put("guard", "${match.amount} > 1000");
-        caseEntry.put("do", List.of(Map.of("process", Map.of("command", "a.sh"))));
+        caseEntry.put("process", Map.of("command", "a.sh"));
 
         Map<String, Object> step = new LinkedHashMap<>();
         step.put("match", "${status}");
@@ -483,7 +483,7 @@ class WalkerTest {
     void warnsWhenMatchHasNoDefault() {
         Map<String, Object> caseEntry = new LinkedHashMap<>();
         caseEntry.put("pattern", "ACTIVE");
-        caseEntry.put("do", List.of(Map.of("process", Map.of("command", "a.sh"))));
+        caseEntry.put("process", Map.of("command", "a.sh"));
 
         Map<String, Object> step = new LinkedHashMap<>();
         step.put("match", "${status}");
@@ -521,7 +521,7 @@ class WalkerTest {
     void noWarningWhenMatchHasDefault() {
         Map<String, Object> caseEntry = new LinkedHashMap<>();
         caseEntry.put("pattern", "ACTIVE");
-        caseEntry.put("do", List.of(Map.of("process", Map.of("command", "a.sh"))));
+        caseEntry.put("process", Map.of("command", "a.sh"));
 
         Map<String, Object> defaultEntry = new LinkedHashMap<>();
         defaultEntry.put("default", List.of(Map.of("process", Map.of("command", "log.sh"))));
@@ -643,9 +643,9 @@ class WalkerTest {
         var step = new LinkedHashMap<String, Object>();
         step.put("select", List.of(
                 Map.of("subscribe", Map.of("channel", "quotes"),
-                       "do", List.of(Map.of("process", Map.of("cmd", "handle")))),
+                       "process", Map.of("cmd", "handle")),
                 Map.of("wait", "timeout",
-                       "do", List.of(Map.of("process", Map.of("cmd", "fallback"))))));
+                       "process", Map.of("cmd", "fallback"))));
 
         List<ResolvedStep> resolved = Walker.resolve(List.of(step), registry);
         assertThat(resolved).hasSize(1);
@@ -666,6 +666,45 @@ class WalkerTest {
         assertThatThrownBy(() -> Walker.resolve(List.of(step), registry))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("select branch must contain 'subscribe' or 'wait'");
+    }
+
+    @Test
+    void resolvesMatchCaseWithInlineAction() {
+        Map<String, Object> step = new LinkedHashMap<>();
+        step.put("match", "${status}");
+        step.put("cases", List.of(
+                Map.of("pattern", "active",
+                        "process", Map.of("command", "activate.sh")),
+                Map.of("default", List.of(
+                        Map.of("assert", Map.of("expected", "fallback"))))));
+
+        List<ResolvedStep> resolved = Walker.resolve(List.of(step), registry);
+
+        assertThat(resolved).hasSize(1);
+        var match = (ResolvedStep.MatchStep) resolved.get(0);
+        assertThat(match.cases()).hasSize(2);
+        assertThat(match.cases().get(0).steps()).hasSize(1);
+        assertThat(match.cases().get(0).steps().get(0)).isInstanceOf(ResolvedStep.PluginStep.class);
+        var plugin = (ResolvedStep.PluginStep) match.cases().get(0).steps().get(0);
+        assertThat(plugin.actionName()).isEqualTo("process");
+    }
+
+    @Test
+    void resolvesSelectBranchWithInlineAction() {
+        Map<String, Object> step = new LinkedHashMap<>();
+        step.put("select", List.of(
+                Map.of("subscribe", "events",
+                        "process", Map.of("command", "handle.sh")),
+                Map.of("wait", "timeout-signal",
+                        "assert", Map.of("expected", "timed-out"))));
+
+        List<ResolvedStep> resolved = Walker.resolve(List.of(step), registry);
+
+        assertThat(resolved).hasSize(1);
+        var select = (ResolvedStep.SelectStep) resolved.get(0);
+        assertThat(select.branches()).hasSize(2);
+        assertThat(select.branches().get(0).steps()).hasSize(1);
+        assertThat(select.branches().get(0).steps().get(0)).isInstanceOf(ResolvedStep.PluginStep.class);
     }
 
     @Test
