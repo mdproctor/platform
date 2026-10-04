@@ -684,7 +684,7 @@ All sources register `Definition` objects into the `CompositePluginRegistry`. Fi
 | `AptPluginSource` | `@Plugin` records via `META-INF/yaml-plugins/` manifests on the classpath | Startup populate |
 | `McpToolSource` | MCP tool definitions — each tool becomes an action with a tool invoker binding | Event-driven |
 | `ScriptSource` | Script files (`.py`, `.js`, `.mjs`) with companion `.schema.yaml` files on the filesystem | Startup populate |
-| `YamlStepDefinitionSource` | YAML step definition files — declarative step definitions with typed parameters and invoke bindings | Startup populate |
+| `YamlDefinitionSource` | YAML step definition files — declarative step definitions with typed parameters and invoke bindings | Startup populate |
 
 ### Script auto-discovery
 
@@ -775,7 +775,7 @@ Every step definition has an `InvokeBinding` that determines how it executes:
 
 The step catalog enforces type safety at two levels:
 
-1. **Parse-time:** `StepWalker` resolves step maps against the registry. Unknown action keys are rejected with the list of available actions. Parameter types are checked against the `Parameter` definitions.
+1. **Parse-time:** `Walker` resolves step maps against the registry. Unknown action keys are rejected with the list of available actions. Parameter types are checked against the `Parameter` definitions.
 
 2. **Schema composition:** `StepSchemaComposer` generates a composed JSON Schema covering all discovered actions. Each action becomes a `oneOf` variant with its parameters schema. Structural step types (block, if/else, match, parallel) are included as additional variants. This schema can be served to editors for validation and auto-complete.
 

@@ -512,7 +512,7 @@ The generated `*Action` class now implements `Action` (not `Action`). The `AptPl
 
 #### Path 3: YAML step definitions
 
-The existing `YamlStepDefinitionSource` parses YAML step definition files, resolves `InvokeBinding` via `InvokeHandler` to produce an `Action`, and constructs a `Definition` for registration.
+The existing `YamlDefinitionSource` parses YAML step definition files, resolves `InvokeBinding` via `InvokeHandler` to produce an `Action`, and constructs a `Definition` for registration.
 
 **Portability inference from invoke binding:**
 
@@ -686,10 +686,10 @@ for (String actionName : playbook.referencedActions()) {
 
 | Type | Module | Changes |
 |---|---|---|
-| `StepWalker` | yaml-step-runtime | `StepCatalog` → `PluginRegistry`, `CatalogEntry` → `Definition` |
+| `Walker` | yaml-step-runtime | `StepCatalog` → `PluginRegistry`, `CatalogEntry` → `Definition` |
 | `StepSchemaComposer` | yaml-step-runtime | `StepCatalog` → `PluginRegistry`, `StepParameter` → `Parameter`, `StepParameterType` → `ParameterType` |
 | `McpStepCatalogWiring` | yaml-step-runtime | `CatalogSource` → direct `PluginRegistry.register()`, `CatalogEntry` → `Definition`, `Declaration` → `Declaration`, `StepParameter` → `Parameter`, `StepParameterType` → `ParameterType` |
-| `YamlStepDefinitionSource` | yaml-step-runtime | `CatalogSource` → direct `PluginRegistry.register()`, `CatalogEntry` → `Definition`, `Action` → `Action`, `ValidatingAction` → `ValidatingAction` |
+| `YamlDefinitionSource` | yaml-step-runtime | `CatalogSource` → direct `PluginRegistry.register()`, `CatalogEntry` → `Definition`, `Action` → `Action`, `ValidatingAction` → `ValidatingAction` |
 | `ImportScopedStepCatalog` | yaml-step-runtime | `StepCatalog` → `PluginRegistry`, `CatalogEntry` → `Definition` |
 | `DecoratedExecution` | yaml-step-runtime | `Result` → `Result` |
 | `AptPluginSource` | yaml-step-runtime | `CatalogSource` → direct `PluginRegistry.register()`, `CatalogEntry` → `Definition`, `Declaration` → `Declaration`, `StepParameter` → `Parameter`, `StepParameterType` → `ParameterType`, `Action` → `Action`. Reads portability from manifest JSON |

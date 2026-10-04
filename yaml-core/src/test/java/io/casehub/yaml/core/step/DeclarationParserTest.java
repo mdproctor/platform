@@ -11,7 +11,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
-class StepDefinitionParserTest {
+class DeclarationParserTest {
 
     @Test
     void parsesMinimalMcpAction() {

@@ -303,7 +303,7 @@ Position 10 is polymorphic — the decorator stack wraps any step type identical
 
 ### 6. StepWalker Changes
 
-`StepWalker` (in yaml-step-runtime) resolves step map entries by classifying keys and constructing typed `ResolvedStep` variants.
+`Walker` (in yaml-step-runtime) resolves step map entries by classifying keys and constructing typed `ResolvedStep` variants.
 
 **Resolution algorithm:** `resolveOne()` processes a step map in a single pass, classifying each key into one of four categories:
 
@@ -415,7 +415,7 @@ public record ResolvedMatchCase(
 }
 ```
 
-`ResolvedMatchCase` holds resolved steps (consistent with `BlockStep`, `IfElseStep`, and `ParallelStep`), while the parse-layer `MatchCase` in yaml-core retains raw maps. `StepWalker` converts from `MatchCase` to `ResolvedMatchCase` during resolution, recursively resolving each case's step list.
+`ResolvedMatchCase` holds resolved steps (consistent with `BlockStep`, `IfElseStep`, and `ParallelStep`), while the parse-layer `MatchCase` in yaml-core retains raw maps. `Walker` converts from `MatchCase` to `ResolvedMatchCase` during resolution, recursively resolving each case's step list.
 
 ### 7. Pattern Matching Types (yaml-core)
 
@@ -487,7 +487,7 @@ public record MatchCase(
 | `yaml-jackson/` | YamlImport mixin updated for `if` key |
 | `yaml-step-runtime/` | `ResolvedStep` gains `BlockStep`, `IfElseStep`, `MatchStep`, `ParallelStep` variants |
 | `yaml-step-runtime/` | `ResolvedMatchCase` record — resolved-layer case type with `List<ResolvedStep>` steps |
-| `yaml-step-runtime/` | `StepWalker` updated: three-way key classification, recursive resolution, structural step type detection |
+| `yaml-step-runtime/` | `Walker` updated: three-way key classification, recursive resolution, structural step type detection |
 | `yaml-step-runtime/` | `RESERVED_KEYS` updated: `when` → `if`, add `then`, `else`, `match`, `cases`, `block`. `then`/`else`/`cases` are structural companions (reserved, not decorators). `on-success`/`on-failure` remain reserved-but-unassigned |
 | `yaml-step-runtime/` | `StepSchemaComposer.DECORATOR_KEYS` updated to match RESERVED_KEYS. Schema `oneOf` array extended with variants for `block:`, `if/then/else`, `match/cases`, `parallel:` structural step types |
 

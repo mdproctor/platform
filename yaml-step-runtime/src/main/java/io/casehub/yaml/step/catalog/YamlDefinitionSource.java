@@ -20,15 +20,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public class YamlStepDefinitionSource {
+public class YamlDefinitionSource {
 
     private final List<String> definitionFiles;
     private final List<InvokeHandler> handlers;
     private final Consumer<ActionExecutionEvent> eventSink;
 
-    public YamlStepDefinitionSource(List<String> definitionFiles,
-                                     List<InvokeHandler> handlers,
-                                     Consumer<ActionExecutionEvent> eventSink) {
+    public YamlDefinitionSource(List<String> definitionFiles,
+                                List<InvokeHandler> handlers,
+                                Consumer<ActionExecutionEvent> eventSink) {
         this.definitionFiles = definitionFiles;
         this.handlers = handlers;
         this.eventSink = eventSink;

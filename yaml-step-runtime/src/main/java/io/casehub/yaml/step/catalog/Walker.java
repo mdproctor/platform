@@ -9,9 +9,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
-public final class StepWalker {
+public final class Walker {
 
-    private static final Logger LOG = Logger.getLogger(StepWalker.class.getName());
+    private static final Logger LOG = Logger.getLogger(Walker.class.getName());
 
     private static final Set<String> RESERVED_KEYS = Set.of(
             "step", "invoke",
@@ -26,7 +26,7 @@ public final class StepWalker {
     static final         int         MAX_DEPTH             = 32;
 
 
-    private StepWalker() {}
+    private Walker() {}
 
     public static List<ResolvedStep> resolve(
             List<Map<String, Object>> steps, PluginRegistry registry) {

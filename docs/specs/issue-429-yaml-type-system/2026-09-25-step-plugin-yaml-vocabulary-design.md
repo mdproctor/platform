@@ -30,7 +30,7 @@ Additionally, the `@StepPlugin` APT generates `Action` implementations that call
 
 ### 1. Step Walker (yaml-step-runtime)
 
-New utility class `StepWalker` in `io.casehub.yaml.step.catalog`.
+New utility class `Walker` in `io.casehub.yaml.step.catalog`.
 
 #### Key classification
 
@@ -380,7 +380,7 @@ Add `schema-generator` as a transitive dependency of the processor (needed for A
 
 | Module | Change |
 |--------|--------|
-| `yaml-step-runtime/` | `StepWalker` utility + `ResolvedStep` sealed interface |
+| `yaml-step-runtime/` | `Walker` utility + `ResolvedStep` sealed interface |
 | `yaml-step-runtime/` | `CdiServiceRegistry @ApplicationScoped` |
 | `yaml-step-runtime/` | `ProcessPlugin`, `RestCallPlugin`, `AssertPlugin` in `io.casehub.yaml.step.plugin` |
 | `yaml-step-runtime/` | `StepSchemaComposer` utility |
