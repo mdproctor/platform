@@ -1,7 +1,6 @@
 package io.casehub.yaml.step.scenario;
 
 import io.casehub.yaml.core.orchestration.DefaultScenarioScope;
-import io.casehub.yaml.core.resolver.VariableResolver;
 import io.casehub.yaml.plugin.api.Result;
 import io.casehub.yaml.step.catalog.ResolvedStep;
 import io.casehub.yaml.step.eval.StepRunner;
@@ -45,14 +44,14 @@ class ScenarioIntegrationTest {
 
         var root = Map.<String, Object>of("states", states);
         var def = ScenarioParser.parse("incident", root);
-        var errors = ScenarioValidator.validate(def);
+        var errors = PlaybookValidator.validate(def);
         assertThat(errors).isEmpty();
 
         var log = new CopyOnWriteArrayList<String>();
         var scope = new DefaultScenarioScope();
         StepRunner runner = loggingRunner(log);
 
-        var compiled = ScenarioCompiler.compile(def, scope, runner);
+        var compiled = PlaybookCompiler.compile(def, scope, runner);
         var result = compiled.execute();
 
         assertThat(result.isSuccess()).isTrue();
@@ -92,7 +91,7 @@ class ScenarioIntegrationTest {
             return Result.of(Map.of());
         };
 
-        var compiled = ScenarioCompiler.compile(def, scope, runner);
+        var compiled = PlaybookCompiler.compile(def, scope, runner);
         var result = compiled.execute();
 
         assertThat(result.isSuccess()).isTrue();
@@ -119,7 +118,7 @@ class ScenarioIntegrationTest {
         var scope = new DefaultScenarioScope();
         StepRunner runner = loggingRunner(log);
 
-        var compiled = ScenarioCompiler.compile(def, scope, runner);
+        var compiled = PlaybookCompiler.compile(def, scope, runner);
         var result = compiled.execute();
 
         assertThat(result.isSuccess()).isTrue();
@@ -140,7 +139,7 @@ class ScenarioIntegrationTest {
         var scope = new DefaultScenarioScope();
         StepRunner runner = loggingRunner(new CopyOnWriteArrayList<>());
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> ScenarioCompiler.compile(def, scope, runner))
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> PlaybookCompiler.compile(def, scope, runner))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("NONEXISTENT");
     }
@@ -180,7 +179,7 @@ class ScenarioIntegrationTest {
             return Result.of(Map.of());
         };
 
-        var compiled = ScenarioCompiler.compile(def, scope, runner);
+        var compiled = PlaybookCompiler.compile(def, scope, runner);
         compiled.execute();
 
         assertThat(captured).containsExactly("hello-world");
@@ -199,7 +198,7 @@ class ScenarioIntegrationTest {
         var scope = new DefaultScenarioScope();
         StepRunner runner = loggingRunner(log);
 
-        var compiled = ScenarioCompiler.compile(def, scope, runner);
+        var compiled = PlaybookCompiler.compile(def, scope, runner);
         var result = compiled.execute();
 
         assertThat(result.isSuccess()).isTrue();
@@ -219,7 +218,7 @@ class ScenarioIntegrationTest {
         var scope = new DefaultScenarioScope();
         StepRunner runner = (step, resolver) -> Result.failed("boom");
 
-        var compiled = ScenarioCompiler.compile(def, scope, runner);
+        var compiled = PlaybookCompiler.compile(def, scope, runner);
         var result = compiled.execute();
 
         assertThat(result.isSuccess()).isFalse();

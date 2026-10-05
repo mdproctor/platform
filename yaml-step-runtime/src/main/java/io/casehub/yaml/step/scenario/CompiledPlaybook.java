@@ -9,10 +9,10 @@ import io.casehub.yaml.step.eval.StepRunner;
 import java.util.List;
 import java.util.Map;
 
-public record CompiledScenario(
+public record CompiledPlaybook(
         OrcStateMachine<String> stateMachine,
         ScenarioScope scope,
-        ScenarioDefinition definition,
+        PlaybookDefinition definition,
         VariableResolver resolver,
         StepRunner runner,
         Map<String, List<Map<String, Object>>> stateSteps) {

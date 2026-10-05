@@ -14,7 +14,7 @@ public final class ScenarioParser {
 
     private ScenarioParser() {}
 
-    public static ScenarioDefinition parseYaml(String yaml) {
+    public static PlaybookDefinition parseYaml(String yaml) {
         PlaybookDocument doc = PlaybookParser.parse(yaml);
         var name = (String) doc.content().getOrDefault("scenario", "unnamed");
         return parse(name, doc.content());
@@ -25,7 +25,7 @@ public final class ScenarioParser {
     }
 
     @SuppressWarnings("unchecked")
-    public static ScenarioDefinition parse(String name, Map<String, Object> root) {
+    public static PlaybookDefinition parse(String name, Map<String, Object> root) {
         var statesRaw = (Map<String, Object>) root.get("states");
         if (statesRaw == null) {
             throw new IllegalArgumentException("Scenario must have a 'states' key");
@@ -36,7 +36,7 @@ public final class ScenarioParser {
             states.put(entry.getKey(), parseState(entry.getKey(), entry.getValue()));
         }
 
-        return new ScenarioDefinition(name, states);
+        return new PlaybookDefinition(name, states);
     }
 
     @SuppressWarnings("unchecked")

@@ -1,11 +1,10 @@
 package io.casehub.yaml.step.scenario;
 
 import java.util.LinkedHashMap;
-import java.util.Map;
 
-public record ScenarioDefinition(String name, LinkedHashMap<String, StateDefinition> states) {
+public record PlaybookDefinition(String name, LinkedHashMap<String, StateDefinition> states) {
 
-    public ScenarioDefinition {
+    public PlaybookDefinition {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Scenario name must not be blank");
         }

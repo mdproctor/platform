@@ -9,17 +9,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class ScenarioCompiler {
+public final class PlaybookCompiler {
 
-    private ScenarioCompiler() {}
+    private PlaybookCompiler() {}
 
-    public static CompiledScenario compile(ScenarioDefinition definition, ScenarioScope scope, StepRunner runner) {
+    public static CompiledPlaybook compile(PlaybookDefinition definition, ScenarioScope scope, StepRunner runner) {
         return compile(definition, scope, runner, new VariableResolver(Map.of(), java.util.Set.of()));
     }
 
-    public static CompiledScenario compile(ScenarioDefinition definition, ScenarioScope scope,
-                                            StepRunner runner, VariableResolver resolver) {
-        var errors = ScenarioValidator.validate(definition);
+    public static CompiledPlaybook compile(PlaybookDefinition definition, ScenarioScope scope,
+                                           StepRunner runner, VariableResolver resolver) {
+        var errors = PlaybookValidator.validate(definition);
         if (!errors.isEmpty()) {
             throw new IllegalArgumentException("Invalid scenario '" + definition.name() + "': " + String.join("; ", errors));
         }
@@ -50,7 +50,7 @@ public final class ScenarioCompiler {
             }
 
             if (stateDef.deadline() != null) {
-                var deadlineTarget = ScenarioValidator.parseDeadlineTarget(stateDef.deadline());
+                var deadlineTarget = PlaybookValidator.parseDeadlineTarget(stateDef.deadline());
                 if (deadlineTarget != null) {
                     builder.transition(stateName, deadlineTarget.intern());
                 }
@@ -66,7 +66,7 @@ public final class ScenarioCompiler {
         var resultResolver = resolver.withObjectScope("result",
                 name -> scope.resultStore().hasCompleted(name) ? scope.resultStore().result(name) : null);
 
-        return new CompiledScenario(sm, scope, definition, resultResolver, runner, Map.copyOf(stateSteps));
+        return new CompiledPlaybook(sm, scope, definition, resultResolver, runner, Map.copyOf(stateSteps));
     }
 
     private static void registerEventTransitions(DefaultOrcStateMachine.Builder<String> builder,

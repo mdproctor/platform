@@ -6,11 +6,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-public final class ScenarioValidator {
+public final class PlaybookValidator {
 
-    private ScenarioValidator() {}
+    private PlaybookValidator() {}
 
-    public static List<String> validate(ScenarioDefinition def) {
+    public static List<String> validate(PlaybookDefinition def) {
         var errors = new ArrayList<String>();
         var stateNames = def.states().keySet();
 
@@ -64,7 +64,7 @@ public final class ScenarioValidator {
         }
     }
 
-    private static void validateReachability(ScenarioDefinition def, List<String> errors) {
+    private static void validateReachability(PlaybookDefinition def, List<String> errors) {
         Set<String> reachable = new HashSet<>();
         var queue = new LinkedList<String>();
         queue.add(def.initialState());

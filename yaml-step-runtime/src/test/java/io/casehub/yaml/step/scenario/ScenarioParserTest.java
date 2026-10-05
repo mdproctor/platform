@@ -30,7 +30,7 @@ class ScenarioParserTest {
 
         var root = Map.<String, Object>of("states", states);
 
-        ScenarioDefinition def = ScenarioParser.parse("test", root);
+        PlaybookDefinition def = ScenarioParser.parse("test", root);
 
         assertThat(def.initialState()).isEqualTo("DETECTED");
         assertThat(def.states().get("DETECTED").next()).isEqualTo("TRIAGING");
@@ -52,8 +52,8 @@ class ScenarioParserTest {
         states.put("APPROVED", "terminal");
         states.put("REJECTED", "terminal");
 
-        var root = Map.<String, Object>of("states", states);
-        ScenarioDefinition def = ScenarioParser.parse("test", root);
+        var                root = Map.<String, Object>of("states", states);
+        PlaybookDefinition def  = ScenarioParser.parse("test", root);
 
         assertThat(def.states().get("PENDING").events()).containsKey("approve");
         assertThat(def.states().get("PENDING").events().get("approve"))
@@ -78,8 +78,8 @@ class ScenarioParserTest {
         states.put("SHIPPED", "terminal");
         states.put("CANCELLED", "terminal");
 
-        var root = Map.<String, Object>of("states", states);
-        ScenarioDefinition def = ScenarioParser.parse("test", root);
+        var                root = Map.<String, Object>of("states", states);
+        PlaybookDefinition def  = ScenarioParser.parse("test", root);
 
         var shipEvent = def.states().get("APPROVED").events().get("ship");
         assertThat(shipEvent).isInstanceOf(EventTransition.Guarded.class);
@@ -103,8 +103,8 @@ class ScenarioParserTest {
         states.put("RESOLVED", "terminal");
         states.put("ESCALATED", "terminal");
 
-        var root = Map.<String, Object>of("states", states);
-        ScenarioDefinition def = ScenarioParser.parse("test", root);
+        var                root = Map.<String, Object>of("states", states);
+        PlaybookDefinition def  = ScenarioParser.parse("test", root);
 
         assertThat(def.states().get("DETECTED").deadline())
                 .isEqualTo("${config.sla.timeout} -> ESCALATED");
@@ -121,8 +121,8 @@ class ScenarioParserTest {
         states.put("A", List.<Object>of(Map.of("next", "ESCALATED"), Map.of("step1", Map.of())));
         states.put("ESCALATED", escalated);
 
-        var root = Map.<String, Object>of("states", states);
-        ScenarioDefinition def = ScenarioParser.parse("test", root);
+        var                root = Map.<String, Object>of("states", states);
+        PlaybookDefinition def  = ScenarioParser.parse("test", root);
 
         assertThat(def.states().get("ESCALATED").isTerminal()).isTrue();
         assertThat(def.states().get("ESCALATED").steps()).hasSize(1);
@@ -146,8 +146,8 @@ class ScenarioParserTest {
         states.put("DEFERRED", "terminal");
         states.put("STANDARD", "terminal");
 
-        var root = Map.<String, Object>of("states", states);
-        ScenarioDefinition def = ScenarioParser.parse("test", root);
+        var                root = Map.<String, Object>of("states", states);
+        PlaybookDefinition def  = ScenarioParser.parse("test", root);
 
         var assessEvent = def.states().get("DETECTED").events().get("assess");
         assertThat(assessEvent).isInstanceOf(EventTransition.MatchBased.class);
@@ -169,7 +169,7 @@ class ScenarioParserTest {
                   done: terminal
                 """;
 
-        ScenarioDefinition def = ScenarioParser.parseYaml(yaml);
+        PlaybookDefinition def = ScenarioParser.parseYaml(yaml);
 
         assertThat(def.name()).isEqualTo("test-scenario");
         assertThat(def.states()).containsKey("idle");
@@ -186,7 +186,7 @@ class ScenarioParserTest {
                   end: terminal
                 """;
 
-        ScenarioDefinition def = ScenarioParser.parseYaml(yaml);
+        PlaybookDefinition def = ScenarioParser.parseYaml(yaml);
 
         assertThat(def.name()).isEqualTo("legacy");
         assertThat(def.states()).containsKey("start");
