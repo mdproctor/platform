@@ -1,5 +1,7 @@
 package io.casehub.yaml.step.scenario;
 
+import io.casehub.yaml.core.playbook.PlaybookDocument;
+
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -12,30 +14,14 @@ public final class ScenarioParser {
 
     private ScenarioParser() {}
 
-    @SuppressWarnings("unchecked")
     public static ScenarioDefinition parseYaml(String yaml) {
-        var loader = new org.yaml.snakeyaml.Yaml();
-        var documents = new java.util.ArrayList<Object>();
-        for (Object doc : loader.loadAll(yaml)) {
-            documents.add(doc);
-        }
+        PlaybookDocument doc = PlaybookParser.parse(yaml);
+        var name = (String) doc.content().getOrDefault("scenario", "unnamed");
+        return parse(name, doc.content());
+    }
 
-        if (documents.size() == 1) {
-            var root = (Map<String, Object>) documents.get(0);
-            var name = (String) root.getOrDefault("scenario", "unnamed");
-            return parse(name, root);
-        }
-
-        var meta = (Map<String, Object>) documents.get(0);
-        var name = (String) meta.getOrDefault("scenario", "unnamed");
-        var content = documents.get(1);
-
-        if (content instanceof Map) {
-            return parse(name, (Map<String, Object>) content);
-        }
-
-        throw new IllegalArgumentException(
-                "Second YAML document must be a mapping (states or metadata)");
+    public static PlaybookDocument parsePlaybook(String yaml) {
+        return PlaybookParser.parse(yaml);
     }
 
     @SuppressWarnings("unchecked")
