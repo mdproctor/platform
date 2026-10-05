@@ -18,4 +18,9 @@ public interface SimulationConfig {
         return 1.0;
     }
 
+    default DataRealism fallthroughRealism(String qualifiedName) {
+        return null;
+    }
+
+
 }

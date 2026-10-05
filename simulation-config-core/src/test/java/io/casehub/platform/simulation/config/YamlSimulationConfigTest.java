@@ -1,5 +1,6 @@
 package io.casehub.platform.simulation.config;
 
+import io.casehub.platform.simulation.DataRealism;
 import io.casehub.platform.simulation.ExhaustionPolicy;
 import org.junit.jupiter.api.Test;
 
@@ -470,6 +471,64 @@ class YamlSimulationConfigTest {
                                           strategy: seq
                                       """))
                 .isInstanceOf(io.casehub.platform.simulation.SimulationConfigException.class);
+    }
+
+
+    @Test
+    void parsesFallthroughRealismFromYaml() {
+        var config = load("""
+                          methods:
+                            test-spi.resolve:
+                              fallthrough-realism: STRUCTURALLY_VALID
+                          """);
+        assertThat(config.fallthroughRealism("test-spi.resolve"))
+                .isEqualTo(DataRealism.STRUCTURALLY_VALID);
+    }
+
+    @Test
+    void fallthroughRealismReturnsNullForUnconfiguredMethod() {
+        var config = load("""
+                          methods:
+                            test-spi.resolve:
+                              fallthrough-realism: STRUCTURALLY_VALID
+                          """);
+        assertThat(config.fallthroughRealism("unknown.method")).isNull();
+    }
+
+    @Test
+    void profileOverridesFallthroughRealism() {
+        var config = load("""
+                          methods:
+                            test-spi.resolve:
+                              fallthrough-realism: STRUCTURALLY_VALID
+                          profiles:
+                            demo:
+                              methods:
+                                test-spi.resolve:
+                                  fallthrough-realism: DOMAIN_PLAUSIBLE
+                          """);
+        var profile = config.resolve("demo");
+        assertThat(profile).isPresent();
+        assertThat(profile.get().config().fallthroughRealism("test-spi.resolve"))
+                .isEqualTo(DataRealism.DOMAIN_PLAUSIBLE);
+    }
+
+    @Test
+    void profileFallsBackToBaseFallthroughRealism() {
+        var config = load("""
+                          methods:
+                            test-spi.resolve:
+                              fallthrough-realism: STRUCTURALLY_VALID
+                          profiles:
+                            demo:
+                              methods:
+                                test-spi.resolve:
+                                  strategy: seq
+                          """);
+        var profile = config.resolve("demo");
+        assertThat(profile).isPresent();
+        assertThat(profile.get().config().fallthroughRealism("test-spi.resolve"))
+                .isEqualTo(DataRealism.STRUCTURALLY_VALID);
     }
 
     private YamlSimulationConfig load(String yaml) {

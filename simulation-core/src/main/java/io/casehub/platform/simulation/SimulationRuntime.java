@@ -147,6 +147,16 @@ public class SimulationRuntime {
                 Instant.now(), dataRealism));
     }
 
+    public DataRealism fallthroughRealism(final String qualifiedName) {
+        final var stack = overlayStack;
+        for (int i = stack.size() - 1; i >= 0; i--) {
+            final DataRealism level = stack.get(i).config().fallthroughRealism(qualifiedName);
+            if (level != null) {return level;}
+        }
+        return config.fallthroughRealism(qualifiedName);
+    }
+
+
     static String resolveAlias(final String name) {
         return switch (name) {
             case "seq" -> "sequential";

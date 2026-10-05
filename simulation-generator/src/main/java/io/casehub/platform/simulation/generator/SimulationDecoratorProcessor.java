@@ -400,13 +400,13 @@ public class SimulationDecoratorProcessor extends AbstractProcessor {
 
         if (isVoid) {
             sb.append(indent).append("    delegate.").append(method.name()).append("(").append(args).append(");\n");
-            sb.append(indent).append("    simulation.recordJournal(qualifiedName, __simTenancyId, ").append(inputExpr).append(", null, null);\n");
+            sb.append(indent).append("    simulation.recordJournal(qualifiedName, __simTenancyId, ").append(inputExpr).append(", null, simulation.fallthroughRealism(qualifiedName));\n");
             sb.append(indent).append("    if (simulation.captureEnabled(qualifiedName)) {\n");
             sb.append(indent).append("        simulation.capture(qualifiedName, currentPrincipal.tenancyId(), ").append(inputExpr).append(", null);\n");
             sb.append(indent).append("    }\n");
         } else {
             sb.append(indent).append("    ").append(returnType).append(" result = delegate.").append(method.name()).append("(").append(args).append(");\n");
-            sb.append(indent).append("    simulation.recordJournal(qualifiedName, __simTenancyId, ").append(inputExpr).append(", result, null);\n");
+            sb.append(indent).append("    simulation.recordJournal(qualifiedName, __simTenancyId, ").append(inputExpr).append(", result, simulation.fallthroughRealism(qualifiedName));\n");
             sb.append(indent).append("    if (simulation.captureEnabled(qualifiedName)) {\n");
             sb.append(indent).append("        simulation.capture(qualifiedName, currentPrincipal.tenancyId(), ").append(inputExpr).append(", result);\n");
             sb.append(indent).append("    }\n");

@@ -2,6 +2,7 @@ package io.casehub.platform.simulation.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.casehub.platform.simulation.DataRealism;
 import io.casehub.platform.simulation.ExhaustionPolicy;
 import io.casehub.platform.simulation.InvocationRecord;
 import io.casehub.platform.simulation.ProfileSource;
@@ -112,6 +113,13 @@ public class YamlSimulationConfig implements SimulationConfig, ProfileSource {
         return speed;
     }
 
+    @Override
+    public DataRealism fallthroughRealism(String qualifiedName) {
+        return Optional.ofNullable(methods.get(qualifiedName))
+                       .map(MethodConfig::fallthroughRealism)
+                       .orElse(null);
+    }
+
 
     public Map<String, String> extractorSpecs() {
         return methods.entrySet().stream()
@@ -218,6 +226,15 @@ public class YamlSimulationConfig implements SimulationConfig, ProfileSource {
                 }
                 return YamlSimulationConfig.this.threshold(qualifiedName);
             }
+
+            @Override
+            public DataRealism fallthroughRealism(String qualifiedName) {
+                MethodConfig pm = profile.methods().get(qualifiedName);
+                if (pm != null && pm.fallthroughRealism() != null) {
+                    return pm.fallthroughRealism();
+                }
+                return YamlSimulationConfig.this.fallthroughRealism(qualifiedName);
+            }
         };
 
         InMemorySimulationCorpus corpus = new InMemorySimulationCorpus<>();
@@ -289,8 +306,13 @@ public class YamlSimulationConfig implements SimulationConfig, ProfileSource {
 
         List<String> corpusFiles = (List<String>) props.get("corpus-files");
 
+        DataRealism fallthroughRealism = props.containsKey("fallthrough-realism")
+                ? DataRealism.valueOf(((String) props.get("fallthrough-realism"))
+                        .toUpperCase().replace("-", "_"))
+                : null;
+
         return new MethodConfig(strategy, capture, ep, keyExtractor, scorer,
-                threshold, corpus, corpusFiles);
+                threshold, corpus, corpusFiles, fallthroughRealism);
     }
 
     @SuppressWarnings("unchecked")
@@ -541,7 +563,8 @@ public class YamlSimulationConfig implements SimulationConfig, ProfileSource {
             String scorer,
             Double threshold,
             List<CorpusEntry> corpus,
-            List<String> corpusFiles) {}
+            List<String> corpusFiles,
+            DataRealism fallthroughRealism) {}
 
     record CorpusEntry(
             String key,

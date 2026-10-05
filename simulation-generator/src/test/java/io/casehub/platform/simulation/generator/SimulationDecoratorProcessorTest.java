@@ -199,12 +199,13 @@ class SimulationDecoratorProcessorTest {
     }
 
     @Test
-    void journalRecordingForDelegatePathUsesNull() {
+    void journalRecordingForDelegatePathUsesFallthroughRealism() {
         final var processor = new SimulationDecoratorProcessor();
         final List<SimulationDecoratorProcessor.GeneratedSource> sources = processor.generateFromIndex(index);
         final String code = findSource(sources, "TestSimpleService");
 
-        assertThat(code).contains("result, null)");
+        assertThat(code).contains("simulation.fallthroughRealism(qualifiedName))");
+        assertThat(code).doesNotContain("result, null)");
     }
 
     @Test

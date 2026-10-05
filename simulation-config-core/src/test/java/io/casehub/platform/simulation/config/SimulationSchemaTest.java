@@ -47,6 +47,7 @@ class SimulationSchemaTest {
         assertThat(methodConfig.has("threshold")).isTrue();
         assertThat(methodConfig.has("corpus")).isTrue();
         assertThat(methodConfig.has("corpus-files")).isTrue();
+        assertThat(methodConfig.has("fallthrough-realism")).isTrue();
     }
 
     @Test
@@ -99,6 +100,16 @@ class SimulationSchemaTest {
         assertThat(threshold.get("minimum").asDouble()).isEqualTo(0.0);
         assertThat(threshold.get("maximum").asDouble()).isEqualTo(1.0);
     }
+
+    @Test
+    void methodConfigDefinesFallthroughRealism() throws IOException {
+        JsonNode fr = loadSchema()
+                              .at("/$defs/method-config/properties/fallthrough-realism");
+        assertThat(fr.has("enum")).isTrue();
+        assertThat(fr.get("enum").toString()).contains(
+                "STRUCTURALLY_VALID", "DOMAIN_PLAUSIBLE", "RECORDED_REAL");
+    }
+
 
     @Test
     void schemaHasTemporalProfilesProperty() throws IOException {

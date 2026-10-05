@@ -89,6 +89,14 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "External corpus file paths (classpath: or filesystem)"
+        },
+        "fallthrough-realism": {
+          "type": "string",
+          "enum": [
+            "GARBAGE", "PLACEHOLDER", "STRUCTURALLY_VALID",
+            "DOMAIN_PLAUSIBLE", "RECORDED_REAL"
+          ],
+          "description": "DataRealism level for delegate fallthrough (null if absent — deterministic)"
         }
       }
     },

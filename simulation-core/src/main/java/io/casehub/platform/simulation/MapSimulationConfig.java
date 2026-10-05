@@ -11,27 +11,30 @@ public final class MapSimulationConfig implements SimulationConfig {
     private final Map<String, ExhaustionPolicy> exhaustionPolicies;
     private final Map<String, Double> thresholds;
     private final double              speed;
+    private final Map<String, DataRealism> fallthroughRealisms;
 
 
     private MapSimulationConfig(final Map<String, String> strategies,
                                 final Map<String, Boolean> captures,
                                 final Map<String, ExhaustionPolicy> exhaustionPolicies,
                                 final Map<String, Double> thresholds,
-                                final double speed) {
-        this.strategies         = Map.copyOf(strategies);
-        this.captures           = Map.copyOf(captures);
-        this.exhaustionPolicies = Map.copyOf(exhaustionPolicies);
-        this.thresholds         = Map.copyOf(thresholds);
-        this.speed              = speed;
+                                final double speed,
+                                final Map<String, DataRealism> fallthroughRealisms) {
+        this.strategies          = Map.copyOf(strategies);
+        this.captures            = Map.copyOf(captures);
+        this.exhaustionPolicies  = Map.copyOf(exhaustionPolicies);
+        this.thresholds          = Map.copyOf(thresholds);
+        this.speed               = speed;
+        this.fallthroughRealisms = Map.copyOf(fallthroughRealisms);
     }
 
     public static MapSimulationConfig of(final Map<String, String> strategies) {
-        return new MapSimulationConfig(strategies, Map.of(), Map.of(), Map.of(), 1.0);
+        return new MapSimulationConfig(strategies, Map.of(), Map.of(), Map.of(), 1.0, Map.of());
     }
 
     public static MapSimulationConfig of(final Map<String, String> strategies,
                                          final Map<String, Boolean> captures) {
-        return new MapSimulationConfig(strategies, captures, Map.of(), Map.of(), 1.0);
+        return new MapSimulationConfig(strategies, captures, Map.of(), Map.of(), 1.0, Map.of());
     }
 
     public static Builder builder() {
@@ -63,6 +66,11 @@ public final class MapSimulationConfig implements SimulationConfig {
         return speed;
     }
 
+    @Override
+    public DataRealism fallthroughRealism(final String qualifiedName) {
+        return fallthroughRealisms.get(qualifiedName);
+    }
+
 
     public Map<String, String> strategies() {
         return strategies;
@@ -75,6 +83,7 @@ public final class MapSimulationConfig implements SimulationConfig {
         private final Map<String, ExhaustionPolicy> exhaustionPolicies = new LinkedHashMap<>();
         private final Map<String, Double> thresholds = new LinkedHashMap<>();
         private       double              speed      = 1.0;
+        private final Map<String, DataRealism> fallthroughRealisms = new LinkedHashMap<>();
 
 
         Builder() {}
@@ -106,8 +115,11 @@ public final class MapSimulationConfig implements SimulationConfig {
         }
 
 
-        public MapSimulationConfig build() {
-            return new MapSimulationConfig(strategies, captures, exhaustionPolicies, thresholds, speed);
+        public Builder fallthroughRealism(final String qualifiedName, final DataRealism level) {
+            fallthroughRealisms.put(qualifiedName, level);
+            return this;
         }
+
+        public MapSimulationConfig build() {return new MapSimulationConfig(strategies, captures, exhaustionPolicies, thresholds, speed, fallthroughRealisms);}
     }
 }

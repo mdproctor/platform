@@ -474,6 +474,60 @@ class SimulationRuntimeTest {
                 .hasMessageContaining("ProfileSource");
     }
 
+
+    @Test
+    void fallthroughRealismDefaultsToNull() {
+        final var config = stubConfig(Optional.empty(), false, Optional.empty());
+        assertThat(config.fallthroughRealism("any.method")).isNull();
+    }
+
+    @Test
+    void mapSimulationConfigSupportsFallthroughRealism() {
+        final var config = MapSimulationConfig.builder()
+                                              .fallthroughRealism(QN, DataRealism.STRUCTURALLY_VALID)
+                                              .build();
+        assertThat(config.fallthroughRealism(QN))
+                .isEqualTo(DataRealism.STRUCTURALLY_VALID);
+        assertThat(config.fallthroughRealism("other.method")).isNull();
+    }
+
+    @Test
+    void fallthroughRealismReturnsConfiguredLevel() {
+        final var config = MapSimulationConfig.builder()
+                                              .fallthroughRealism(QN, DataRealism.STRUCTURALLY_VALID)
+                                              .build();
+        final var runtime = new SimulationRuntime(config, new NoOpSimulationCorpus<>());
+        assertThat(runtime.fallthroughRealism(QN)).isEqualTo(DataRealism.STRUCTURALLY_VALID);
+    }
+
+    @Test
+    void fallthroughRealismReturnsNullForUnconfiguredMethod() {
+        final var config = MapSimulationConfig.builder()
+                                              .fallthroughRealism(QN, DataRealism.STRUCTURALLY_VALID)
+                                              .build();
+        final var runtime = new SimulationRuntime(config, new NoOpSimulationCorpus<>());
+        assertThat(runtime.fallthroughRealism("other.method")).isNull();
+    }
+
+    @Test
+    void overlayOverridesBaseFallthroughRealism() {
+        final var baseConfig = MapSimulationConfig.builder()
+                                                  .fallthroughRealism(QN, DataRealism.STRUCTURALLY_VALID)
+                                                  .build();
+        final var runtime = new SimulationRuntime(baseConfig, new NoOpSimulationCorpus<>());
+
+        final var overlayConfig = MapSimulationConfig.builder()
+                                                     .fallthroughRealism(QN, DataRealism.DOMAIN_PLAUSIBLE)
+                                                     .build();
+        final var overlay = runtime.pushOverlay(overlayConfig);
+
+        assertThat(runtime.fallthroughRealism(QN)).isEqualTo(DataRealism.DOMAIN_PLAUSIBLE);
+
+        runtime.popOverlay(overlay);
+        assertThat(runtime.fallthroughRealism(QN)).isEqualTo(DataRealism.STRUCTURALLY_VALID);
+    }
+
+
     private static SimulationConfig stubConfig(final Optional<String> strategy,
                                                final boolean capture,
                                                final Optional<ExhaustionPolicy> exhaustion) {
