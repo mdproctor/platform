@@ -1,0 +1,35 @@
+{
+  "$id": "https://casehub.io/yaml-core/playbook.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Playbook Front Matter",
+  "description": "Front matter for .playbook.yaml files. Declares the playbook version and schema, which determines the vocabulary available in the content document.",
+  "type": "object",
+  "required": ["playbook", "schema"],
+  "properties": {
+    "playbook": {
+      "type": ["string", "number"],
+      "description": "Playbook format version. Currently '1.0'.",
+      "examples": ["1.0"]
+    },
+    "schema": {
+      "type": "string",
+      "description": "Schema identifier. Built-in: 'client' (UI runtime), 'server' (backend runtime). Domain: '{domain}-{platform}' extends a base schema.",
+      "examples": ["client", "server", "clinical-client", "aml-server"]
+    },
+    "name": {
+      "type": "string",
+      "description": "Optional playbook name. If omitted, derived from the 'scenario' key in the content document."
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "builtInSchema": {
+      "enum": ["client", "server"]
+    },
+    "domainSchemaPattern": {
+      "type": "string",
+      "pattern": "^[a-z]+-(?:client|server)$",
+      "description": "Domain schema: {domain}-{platform}"
+    }
+  }
+}
