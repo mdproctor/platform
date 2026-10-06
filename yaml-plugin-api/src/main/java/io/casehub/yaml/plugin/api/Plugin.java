@@ -13,4 +13,6 @@ public @interface Plugin {
 
     Portability portability() default Portability.JAVA;
 
+
+    String capability() default "steps";
 }

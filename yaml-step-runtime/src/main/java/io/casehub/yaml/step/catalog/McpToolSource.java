@@ -38,7 +38,7 @@ public class McpToolSource {
                             return Result.failed(
                                     "MCP tool '" + toolName + "' failed: " + ex.getMessage());
                         }
-                    }));
+                    }, "mcp-invoke"));
         }
     }
 }

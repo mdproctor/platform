@@ -6,13 +6,14 @@ import javax.lang.model.element.TypeElement;
 import java.util.List;
 
 record PluginModel(
-    String name,
-    String description,
-    String portability,
-    TypeElement pluginClass,
-    List<RecordComponentElement> fields,
-    ExecutableElement executeMethod,
-    List<ServiceParam> serviceParams
+        String name,
+        String description,
+        String portability,
+        String capability,
+        TypeElement pluginClass,
+        List<RecordComponentElement> fields,
+        ExecutableElement executeMethod,
+        List<ServiceParam> serviceParams
 ) {
     record ServiceParam(String typeName, String qualifiedTypeName) {}
 }

@@ -106,9 +106,11 @@ public class AptPluginSource {
         String portabilityStr = (String) manifest.get("portability");
         Portability portability = portabilityStr != null
                 ? Portability.valueOf(portabilityStr) : Portability.JAVA;
+        String capabilityStr = (String) manifest.get("capability");
 
         Definition.Builder builder = Definition.of(name)
                 .portability(portability)
+                .capability(capabilityStr)
                 .execute(loadAction(actionClass));
 
         if (schemaStream != null) {

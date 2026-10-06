@@ -87,7 +87,7 @@ class McpToolSourceTest {
 
         var registry = new CompositePluginRegistry();
         registry.register(new Definition("tool", "existing", Map.of(), Map.of(),
-                Portability.JAVA, (params, services) -> Result.of(Map.of())));
+                Portability.JAVA, (params, services) -> Result.of(Map.of()), null));
 
         source.populate(registry);
 

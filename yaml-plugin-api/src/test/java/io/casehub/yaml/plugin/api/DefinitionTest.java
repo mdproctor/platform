@@ -1,8 +1,13 @@
 package io.casehub.yaml.plugin.api;
 
 import org.junit.jupiter.api.Test;
+
 import java.util.Map;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DefinitionTest {
 
@@ -30,13 +35,13 @@ class DefinitionTest {
     @Test
     void requiresName() {
         assertThrows(IllegalArgumentException.class, () ->
-            new Definition(null, null, Map.of(), Map.of(), Portability.JAVA, NOOP_ACTION));
+            new Definition(null, null, Map.of(), Map.of(), Portability.JAVA, NOOP_ACTION, null));
     }
 
     @Test
     void requiresAction() {
         assertThrows(IllegalArgumentException.class, () ->
-            new Definition("test", null, Map.of(), Map.of(), Portability.JAVA, null));
+            new Definition("test", null, Map.of(), Map.of(), Portability.JAVA, null, null));
     }
 
     @Test
@@ -45,6 +50,38 @@ class DefinitionTest {
                 .execute(NOOP_ACTION)
                 .build();
         assertEquals(Portability.JAVA, def.portability());
+    }
+
+
+    @Test
+    void defaultsCapabilityToSteps() {
+        Definition def = Definition.of("test")
+                                   .execute(NOOP_ACTION)
+                                   .build();
+        assertEquals("steps", def.capability());
+    }
+
+    @Test
+    void nullCapabilityDefaultsToSteps() {
+        Definition def = new Definition("test", null, Map.of(), Map.of(),
+                                        Portability.JAVA, NOOP_ACTION, null);
+        assertEquals("steps", def.capability());
+    }
+
+    @Test
+    void blankCapabilityDefaultsToSteps() {
+        Definition def = new Definition("test", null, Map.of(), Map.of(),
+                                        Portability.JAVA, NOOP_ACTION, "  ");
+        assertEquals("steps", def.capability());
+    }
+
+    @Test
+    void explicitCapabilityPreserved() {
+        Definition def = Definition.of("correlate")
+                                   .capability("correlation")
+                                   .execute(NOOP_ACTION)
+                                   .build();
+        assertEquals("correlation", def.capability());
     }
 
     @Test

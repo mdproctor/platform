@@ -69,7 +69,7 @@ public class ScriptSource {
                     Declaration decl = new Declaration(name, description, inputs, outputs, binding);
 
                     registry.register(new Definition(name, description, inputs, outputs,
-                            Portability.UNIVERSAL, handler.create(decl, binding)));
+                            Portability.UNIVERSAL, handler.create(decl, binding), null));
                 }
             } catch (IOException e) {
                 throw new IllegalStateException("Failed to scan script directory: " + dir, e);

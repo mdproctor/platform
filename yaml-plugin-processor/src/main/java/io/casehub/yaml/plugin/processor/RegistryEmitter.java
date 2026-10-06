@@ -19,6 +19,7 @@ class RegistryEmitter {
             w.println("{");
             w.println("  \"name\": \"" + model.name() + "\",");
             w.println("  \"description\": \"" + model.description() + "\",");
+            w.println("  \"capability\": \"" + model.capability() + "\",");
             w.println("  \"pluginClass\": \"" + model.pluginClass().getQualifiedName() + "\",");
             w.println("  \"actionClass\": \"" + actionFqcn + "\",");
             w.println("  \"portability\": \"" + model.portability() + "\",");

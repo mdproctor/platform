@@ -87,10 +87,10 @@ public class YamlStepDefinitionSource {
 
             String qualifiedName = decl.qualifiedName(defFile.namespace());
             registry.register(new Definition(qualifiedName, decl.description(),
-                    decl.inputs(), decl.outputs(), portability, validated));
+                    decl.inputs(), decl.outputs(), portability, validated, null));
             if (!defFile.namespace().isEmpty()) {
                 registry.register(new Definition(decl.name(), decl.description(),
-                        decl.inputs(), decl.outputs(), portability, validated));
+                        decl.inputs(), decl.outputs(), portability, validated, null));
             }
         }
     }

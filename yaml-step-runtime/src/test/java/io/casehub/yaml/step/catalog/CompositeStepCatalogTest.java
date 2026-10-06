@@ -13,7 +13,7 @@ class CompositeStepCatalogTest {
 
     private Definition definition(String name) {
         return new Definition(name, null, Map.of(), Map.of(), Portability.JAVA,
-                (params, services) -> Result.of(Map.of()));
+                (params, services) -> Result.of(Map.of()), null);
     }
 
     @Test
@@ -46,7 +46,7 @@ class CompositeStepCatalogTest {
         var registry = new CompositePluginRegistry();
         registry.register(definition("shared"));
         registry.register(new Definition("shared", "second", Map.of(), Map.of(), Portability.JAVA,
-                (params, services) -> Result.failed("should not be used")));
+                (params, services) -> Result.failed("should not be used"), null));
 
         assertThat(registry.resolve("shared")).isPresent();
         assertThat(registry.resolve("shared").get().description()).isNull();

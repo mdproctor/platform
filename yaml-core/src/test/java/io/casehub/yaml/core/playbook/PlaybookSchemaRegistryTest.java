@@ -95,4 +95,53 @@ class PlaybookSchemaRegistryTest {
     void resolveEffective_withNullFrontMatter_returnsNull() {
         assertThat(registry.resolveEffective(null)).isNull();
     }
+
+    @Test
+    void effectiveCapabilities_builtIn_returnsOwnCapabilities() {
+        var caps = registry.effectiveCapabilities("server");
+        assertThat(caps).contains(
+                PlaybookCapabilities.STEPS,
+                PlaybookCapabilities.ORCHESTRATION,
+                PlaybookCapabilities.CORRELATION);
+        assertThat(caps).doesNotContain(PlaybookCapabilities.ARIA);
+    }
+
+    @Test
+    void effectiveCapabilities_domainSchema_includesBaseCapabilities() {
+        registry.register(PlaybookSchemaDescriptor.domain(
+                "clinical-server", "server", Set.of("clinical-trial")));
+
+        var caps = registry.effectiveCapabilities("clinical-server");
+        assertThat(caps).contains("clinical-trial");
+        assertThat(caps).contains(PlaybookCapabilities.STEPS);
+        assertThat(caps).contains(PlaybookCapabilities.ORCHESTRATION);
+    }
+
+    @Test
+    void effectiveCapabilities_multiLevel_resolves() {
+        registry.register(PlaybookSchemaDescriptor.domain(
+                "clinical-server", "server", Set.of("clinical-trial")));
+        registry.register(PlaybookSchemaDescriptor.domain(
+                "nhs-clinical-server", "clinical-server", Set.of("nhs-audit")));
+
+        var caps = registry.effectiveCapabilities("nhs-clinical-server");
+        assertThat(caps).contains("nhs-audit", "clinical-trial",
+                                  PlaybookCapabilities.STEPS, PlaybookCapabilities.ORCHESTRATION);
+    }
+
+    @Test
+    void effectiveCapabilities_unknownSchema_throws() {
+        assertThatThrownBy(() -> registry.effectiveCapabilities("nonexistent"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void effectiveCapabilities_circularInheritance_throws() {
+        registry.register(new PlaybookSchemaDescriptor("alpha", "beta", Set.of()));
+        registry.register(new PlaybookSchemaDescriptor("beta", "alpha", Set.of()));
+
+        assertThatThrownBy(() -> registry.effectiveCapabilities("alpha"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Circular");
+    }
 }

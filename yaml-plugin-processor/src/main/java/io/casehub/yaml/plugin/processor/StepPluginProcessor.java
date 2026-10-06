@@ -82,7 +82,7 @@ public class StepPluginProcessor extends AbstractProcessor {
         }
 
         return new PluginModel(annotation.value(), annotation.description(),
-            annotation.portability().name(),
+            annotation.portability().name(), annotation.capability(),
             typeElement, fields, executeMethod, serviceParams);
     }
 

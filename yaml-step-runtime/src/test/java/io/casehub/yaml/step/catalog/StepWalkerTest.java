@@ -584,7 +584,7 @@ class StepWalkerTest {
 
     private static Definition defn(String name) {
         return new Definition(name, null, Map.of(), Map.of(), Portability.JAVA,
-                (params, services) -> Result.of(Map.of()));
+                (params, services) -> Result.of(Map.of()), null);
     }
 
     @Test

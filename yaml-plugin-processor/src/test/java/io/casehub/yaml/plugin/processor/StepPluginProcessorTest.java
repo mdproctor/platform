@@ -120,4 +120,33 @@ class StepPluginProcessorTest {
         assertThat(content).contains("\"name\": \"test-action\"");
         assertThat(content).contains("\"actionClass\": \"test.plugins.ValidPluginAction\"");
     }
+
+    @Test
+    void manifestIncludesDefaultCapability() throws IOException {
+        Compilation compilation = javac()
+                                          .withProcessors(new StepPluginProcessor())
+                                          .compile(JavaFileObjects.forResource("test-plugins/ValidPlugin.java"));
+
+        JavaFileObject registry = compilation.generatedFile(
+                StandardLocation.CLASS_OUTPUT,
+                "META-INF/yaml-plugins/test-action.json").orElseThrow();
+        String content = registry.getCharContent(false).toString();
+
+        assertThat(content).contains("\"capability\": \"steps\"");
+    }
+
+    @Test
+    void manifestIncludesExplicitCapability() throws IOException {
+        Compilation compilation = javac()
+                                          .withProcessors(new StepPluginProcessor())
+                                          .compile(JavaFileObjects.forResource("test-plugins/CapabilityPlugin.java"));
+        assertThat(compilation).succeededWithoutWarnings();
+
+        JavaFileObject registry = compilation.generatedFile(
+                StandardLocation.CLASS_OUTPUT,
+                "META-INF/yaml-plugins/cap-action.json").orElseThrow();
+        String content = registry.getCharContent(false).toString();
+
+        assertThat(content).contains("\"capability\": \"orchestration\"");
+    }
 }

@@ -33,12 +33,13 @@ public class PluginScanner {
         String name = annotation.value();
         String description = annotation.description().isEmpty() ? null : annotation.description();
         Portability portability = annotation.portability();
+        String capability = annotation.capability();
 
         Method executeMethod = findExecuteMethod(pluginClass);
         Map<String, Parameter> inputs = buildInputs(pluginClass);
 
         Action action = createAction(pluginClass, executeMethod, inputs);
-        registry.register(new Definition(name, description, inputs, Map.of(), portability, action));
+        registry.register(new Definition(name, description, inputs, Map.of(), portability, action, capability));
     }
 
     private Method findExecuteMethod(Class<?> pluginClass) {

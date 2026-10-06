@@ -150,7 +150,7 @@ class StepSchemaComposerTest {
     private PluginRegistry registryWith(String name, Map<String, Parameter> inputs) {
         var registry = new CompositePluginRegistry();
         registry.register(new Definition(name, null, inputs, Map.of(), Portability.JAVA,
-                (p, s) -> Result.of(Map.of())));
+                (p, s) -> Result.of(Map.of()), null));
         return registry;
     }
 
@@ -158,9 +158,9 @@ class StepSchemaComposerTest {
                                          String name2, Map<String, Parameter> inputs2) {
         var registry = new CompositePluginRegistry();
         registry.register(new Definition(name1, null, inputs1, Map.of(), Portability.JAVA,
-                (p, s) -> Result.of(Map.of())));
+                (p, s) -> Result.of(Map.of()), null));
         registry.register(new Definition(name2, null, inputs2, Map.of(), Portability.JAVA,
-                (p, s) -> Result.of(Map.of())));
+                (p, s) -> Result.of(Map.of()), null));
         return registry;
     }
 }
