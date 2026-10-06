@@ -38,7 +38,9 @@ public class SpringDomainRestControllerWriter {
     private static final ClassName HTTP_STATUS = ClassName.get("org.springframework.http", "HttpStatus");
     private static final ClassName MEDIA_TYPE = ClassName.get("org.springframework.http", "MediaType");
     private static final ClassName ROLES_ALLOWED = ClassName.get("jakarta.annotation.security", "RolesAllowed");
-    private static final ClassName SSE_EMITTER = ClassName.get("org.springframework.web.servlet.mvc.method.annotation", "SseEmitter");
+    private static final ClassName SSE_EMITTER          = ClassName.get("org.springframework.web.servlet.mvc.method.annotation", "SseEmitter");
+    private static final ClassName FLOW_SUBSCRIBER      = ClassName.get("java.util.concurrent", "Flow", "Subscriber");
+    private static final ClassName FLOW_SUBSCRIPTION    = ClassName.get("java.util.concurrent", "Flow", "Subscription");
     private static final ClassName VALID = ClassName.get("jakarta.validation", "Valid");
     private static final ClassName REQUEST_HEADER = ClassName.get("org.springframework.web.bind.annotation", "RequestHeader");
 
@@ -197,7 +199,7 @@ public class SpringDomainRestControllerWriter {
     }
 
     private MethodSpec buildStreamMethod(ResolvedOperation op, String fieldName) {
-        List<String> pathParams = new ArrayList<>();
+        List<String> pathParams         = new ArrayList<>();
         Set<Integer> pathParamPositions = new HashSet<>();
         for (int i = 0; i < op.params().size(); i++) {
             ResolvedParam p = op.params().get(i);
@@ -217,37 +219,68 @@ public class SpringDomainRestControllerWriter {
         }
 
         MethodSpec.Builder builder = MethodSpec.methodBuilder(op.methodName())
-                .addModifiers(Modifier.PUBLIC)
-                .returns(SSE_EMITTER)
-                .addAnnotation(AnnotationSpec.builder(GET_MAPPING)
-                        .addMember("value", "$S", pathSuffix.toString())
-                        .addMember("produces", "$T.TEXT_EVENT_STREAM_VALUE", MEDIA_TYPE)
-                        .build());
+                                               .addModifiers(Modifier.PUBLIC)
+                                               .returns(SSE_EMITTER)
+                                               .addAnnotation(AnnotationSpec.builder(GET_MAPPING)
+                                                                            .addMember("value", "$S", pathSuffix.toString())
+                                                                            .addMember("produces", "$T.TEXT_EVENT_STREAM_VALUE", MEDIA_TYPE)
+                                                                            .build());
 
         for (int i = 0; i < op.params().size(); i++) {
             ResolvedParam p = op.params().get(i);
-            if (p.isContextParam()) { continue; }
+            if (p.isContextParam()) {continue;}
             ParameterSpec.Builder paramBuilder = ParameterSpec.builder(p.typeName(), p.name());
             if (pathParamPositions.contains(i)) {
                 String pathName = p.pathParamName() != null ? p.pathParamName() : p.name();
                 paramBuilder.addAnnotation(AnnotationSpec.builder(PATH_VARIABLE)
-                        .addMember("value", "$S", pathName).build());
+                                                         .addMember("value", "$S", pathName).build());
             } else {
                 String qpName = p.restName() != null ? p.restName() : p.name();
                 paramBuilder.addAnnotation(AnnotationSpec.builder(REQUEST_PARAM)
-                        .addMember("value", "$S", qpName).build());
+                                                         .addMember("value", "$S", qpName).build());
             }
             builder.addParameter(paramBuilder.build());
         }
 
         String args = op.params().stream()
-                .map(p -> p.isContextParam() ? contextParamResolution(p.contextParamKey()) : p.name())
-                .reduce((a, b) -> a + ", " + b).orElse("");
+                        .map(p -> p.isContextParam() ? contextParamResolution(p.contextParamKey()) : p.name())
+                        .reduce((a, b) -> a + ", " + b).orElse("");
 
-        builder.addStatement("var emitter = new $T()", SSE_EMITTER);
-        builder.addStatement("$L.$L($L).subscribe().with(item -> { try { emitter.send(item); } catch (Exception e) { emitter.completeWithError(e); } }, emitter::completeWithError, emitter::complete)",
-                fieldName, op.methodName(), args);
-        builder.addStatement("return emitter");
+        com.palantir.javapoet.TypeName eventType = ClassName.get(Object.class);
+        if (op.returnTypeName() instanceof ParameterizedTypeName pt && !pt.typeArguments().isEmpty()) {
+            eventType = pt.typeArguments().get(0);
+        }
+
+        builder.addCode(CodeBlock.builder()
+                                 .addStatement("$T emitter = new $T(0L)", SSE_EMITTER, SSE_EMITTER)
+                                 .beginControlFlow("$T.ofVirtual().start(() ->", Thread.class)
+                                 .beginControlFlow("$L.$L($L).subscribe(new $T<$T>()", fieldName, op.methodName(), args, FLOW_SUBSCRIBER, eventType)
+                                 .add("@Override\n")
+                                 .beginControlFlow("public void onSubscribe($T subscription)", FLOW_SUBSCRIPTION)
+                                 .addStatement("subscription.request($T.MAX_VALUE)", Long.class)
+                                 .addStatement("emitter.onTimeout(subscription::cancel)")
+                                 .addStatement("emitter.onCompletion(subscription::cancel)")
+                                 .endControlFlow()
+                                 .add("@Override\n")
+                                 .beginControlFlow("public void onNext($T item)", eventType)
+                                 .beginControlFlow("try")
+                                 .addStatement("emitter.send(item)")
+                                 .nextControlFlow("catch ($T e)", Exception.class)
+                                 .addStatement("emitter.completeWithError(e)")
+                                 .endControlFlow()
+                                 .endControlFlow()
+                                 .add("@Override\n")
+                                 .beginControlFlow("public void onError($T t)", Throwable.class)
+                                 .addStatement("emitter.completeWithError(t)")
+                                 .endControlFlow()
+                                 .add("@Override\n")
+                                 .beginControlFlow("public void onComplete()")
+                                 .addStatement("emitter.complete()")
+                                 .endControlFlow()
+                                 .endControlFlow(")") // end anonymous class + subscribe call
+                                 .endControlFlow(")") // end lambda + Thread.start
+                                 .addStatement("return emitter")
+                                 .build());
 
         return builder.build();
     }

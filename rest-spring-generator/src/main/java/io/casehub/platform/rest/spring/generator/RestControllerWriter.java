@@ -273,6 +273,8 @@ public class RestControllerWriter {
                             .add("@Override\n")
                             .beginControlFlow("public void onSubscribe($T subscription)", FLOW_SUBSCRIPTION)
                             .addStatement("subscription.request($T.MAX_VALUE)", Long.class)
+                            .addStatement("emitter.onTimeout(subscription::cancel)")
+                            .addStatement("emitter.onCompletion(subscription::cancel)")
                             .endControlFlow()
                             .add("@Override\n")
                             .beginControlFlow("public void onNext($T item)", eventType)

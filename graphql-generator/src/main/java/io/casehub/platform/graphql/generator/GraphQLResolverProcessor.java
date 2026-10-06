@@ -1313,7 +1313,8 @@ public class GraphQLResolverProcessor extends AbstractProcessor {
             params.append(p.typeStr()).append(" ").append(p.name());
         }
 
-        out.println("    public " + op.returnTypeStr() + " " + op.methodName() + "(" + params + ") {");
+        String returnType = op.returnTypeStr();
+        String delegateCall;
         String fieldName = decapitalize(op.declaringClassSimple());
         StringBuilder args = new StringBuilder();
         for (int i = 0; i < op.params().size(); i++) {
@@ -1325,9 +1326,26 @@ public class GraphQLResolverProcessor extends AbstractProcessor {
                 args.append(p.name());
             }
         }
-        out.println("        return " + fieldName + "." + op.methodName() + "(" + args + ");");
+        if (returnType.startsWith("Flow.Publisher<") || returnType.startsWith("java.util.concurrent.Flow.Publisher<")) {
+            String typeArg = extractTypeArgument(returnType);
+            returnType = "io.smallrye.mutiny.Multi<" + typeArg + ">";
+            delegateCall = "io.smallrye.mutiny.Multi.createFrom().publisher(" + fieldName + "." + op.methodName() + "(" + args + "))";
+        } else {
+            delegateCall = fieldName + "." + op.methodName() + "(" + args + ")";
+        }
+        out.println("    public " + returnType + " " + op.methodName() + "(" + params + ") {");
+        out.println("        return " + delegateCall + ";");
         out.println("    }");
         out.println();
+    }
+
+    private static String extractTypeArgument(String parameterizedType) {
+        int start = parameterizedType.indexOf('<');
+        int end = parameterizedType.lastIndexOf('>');
+        if (start >= 0 && end > start) {
+            return parameterizedType.substring(start + 1, end);
+        }
+        return "Object";
     }
 
     private void generateRestWebhookMethod(PrintWriter out, ResolvedOperation op) {
@@ -1613,7 +1631,7 @@ public class GraphQLResolverProcessor extends AbstractProcessor {
             params.append(p.typeStr()).append(" ").append(p.name());
         }
 
-        out.println("    public " + op.returnTypeStr() + " " + op.methodName() + "(" + params + ") {");
+        String returnType = op.returnTypeStr();
         String fieldName = decapitalize(op.declaringClassSimple());
         StringBuilder args = new StringBuilder();
         for (int i = 0; i < op.params().size(); i++) {
@@ -1625,7 +1643,16 @@ public class GraphQLResolverProcessor extends AbstractProcessor {
                 args.append(p.name());
             }
         }
-        out.println("        return " + fieldName + "." + op.methodName() + "(" + args + ");");
+        String delegateCall;
+        if (returnType.startsWith("Flow.Publisher<") || returnType.startsWith("java.util.concurrent.Flow.Publisher<")) {
+            String typeArg = extractTypeArgument(returnType);
+            returnType = "io.smallrye.mutiny.Multi<" + typeArg + ">";
+            delegateCall = "io.smallrye.mutiny.Multi.createFrom().publisher(" + fieldName + "." + op.methodName() + "(" + args + "))";
+        } else {
+            delegateCall = fieldName + "." + op.methodName() + "(" + args + ")";
+        }
+        out.println("    public " + returnType + " " + op.methodName() + "(" + params + ") {");
+        out.println("        return " + delegateCall + ";");
         out.println("    }");
         out.println();
     }
@@ -1700,9 +1727,13 @@ public class GraphQLResolverProcessor extends AbstractProcessor {
 
     private void addTypeImport(Set<String> imports, Type type) {
         switch (type.kind()) {
-            case CLASS -> imports.add(type.name().toString());
+            case CLASS -> {
+                String fqcn = type.name().toString();
+                imports.add(fqcn.contains("$") ? fqcn.substring(0, fqcn.indexOf('$')) : fqcn);
+            }
             case PARAMETERIZED_TYPE -> {
-                imports.add(type.asParameterizedType().name().toString());
+                String fqcn = type.asParameterizedType().name().toString();
+                imports.add(fqcn.contains("$") ? fqcn.substring(0, fqcn.indexOf('$')) : fqcn);
                 for (Type arg : type.asParameterizedType().arguments()) {
                     addTypeImport(imports, arg);
                 }
@@ -1716,9 +1747,23 @@ public class GraphQLResolverProcessor extends AbstractProcessor {
         return switch (type.kind()) {
             case VOID -> "void";
             case PRIMITIVE -> type.asPrimitiveType().primitive().name().toLowerCase();
-            case CLASS -> type.asClassType().name().local();
+            case CLASS -> {
+                String fqcn = type.asClassType().name().toString();
+                if (fqcn.contains("$")) {
+                    String outerSimple = fqcn.substring(fqcn.lastIndexOf('.') + 1).replace('$', '.');
+                    yield outerSimple;
+                }
+                yield type.asClassType().name().local();
+            }
             case PARAMETERIZED_TYPE -> {
-                StringBuilder sb = new StringBuilder(type.asParameterizedType().name().local());
+                String fqcn = type.asParameterizedType().name().toString();
+                String baseName;
+                if (fqcn.contains("$")) {
+                    baseName = fqcn.substring(fqcn.lastIndexOf('.') + 1).replace('$', '.');
+                } else {
+                    baseName = type.asParameterizedType().name().local();
+                }
+                StringBuilder sb = new StringBuilder(baseName);
                 sb.append("<");
                 List<Type> args = type.asParameterizedType().arguments();
                 for (int i = 0; i < args.size(); i++) {
