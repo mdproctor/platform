@@ -88,6 +88,12 @@ class ChatModelAgentSession implements AgentSession {
         return Uni.createFrom().voidItem();
     }
 
+
+    @Override
+    public void clear() {
+        memory.clear();
+    }
+
     @Override
     public void close(Duration maxWait) {
         State prev = state.getAndSet(State.CLOSED);

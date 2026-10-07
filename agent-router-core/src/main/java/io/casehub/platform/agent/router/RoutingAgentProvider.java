@@ -33,6 +33,8 @@ public class RoutingAgentProvider implements AgentProvider {
     private final String                  defaultBackendKey;
     private final ModelRegistry           modelRegistry;
     private final Map<String, ModelQuery> aliases;
+    private final io.casehub.platform.agent.session.SessionPoolRegistry poolRegistry;
+
     private final ModelAvailabilityFilter availabilityFilter;
 
     private record ResolvedRoute(AgentBackend backend, String apiModelId) {}
@@ -40,28 +42,48 @@ public class RoutingAgentProvider implements AgentProvider {
     public RoutingAgentProvider(BackendInstanceRegistry registry,
                                 String defaultBackendKey,
                                 ModelRegistry modelRegistry) {
-        this(registry, defaultBackendKey, modelRegistry, Map.of(), ModelAvailabilityFilter.ALWAYS_AVAILABLE);
+        this(registry, defaultBackendKey, modelRegistry, Map.of(), (ModelAvailabilityFilter) null, null);
     }
 
     public RoutingAgentProvider(BackendInstanceRegistry registry,
                                 String defaultBackendKey,
                                 ModelRegistry modelRegistry,
                                 Map<String, ModelQuery> aliases) {
-        this(registry, defaultBackendKey, modelRegistry, aliases, ModelAvailabilityFilter.ALWAYS_AVAILABLE);
+        this(registry, defaultBackendKey, modelRegistry, aliases, (ModelAvailabilityFilter) null, null);
     }
 
     public RoutingAgentProvider(BackendInstanceRegistry registry,
                                 String defaultBackendKey,
                                 ModelRegistry modelRegistry,
                                 Map<String, ModelQuery> aliases,
+                                ModelAvailabilityFilter availabilityFilter,
+                                io.casehub.platform.agent.session.SessionPoolRegistry poolRegistry) {
+        this.registry           = registry;
+        this.defaultBackendKey  = defaultBackendKey;
+        this.modelRegistry      = modelRegistry;
+        this.aliases            = aliases != null ? Map.copyOf(aliases) : Map.of();
+        this.availabilityFilter = availabilityFilter != null ? availabilityFilter : ModelAvailabilityFilter.ALWAYS_AVAILABLE;
+        this.poolRegistry       = poolRegistry;
+        LOG.infof("Agent router initialized with registry, default=%s, aliases=%d, pool=%s",
+                  defaultBackendKey, this.aliases.size(), poolRegistry != null ? "enabled" : "disabled");
+    }
+
+
+    public RoutingAgentProvider(BackendInstanceRegistry registry,
+                                String defaultBackendKey,
+                                ModelRegistry modelRegistry,
+                                Map<String, ModelQuery> aliases,
                                 ModelAvailabilityFilter availabilityFilter) {
-        this.registry            = registry;
-        this.defaultBackendKey   = defaultBackendKey;
-        this.modelRegistry       = modelRegistry;
-        this.aliases             = aliases != null ? Map.copyOf(aliases) : Map.of();
-        this.availabilityFilter  = availabilityFilter != null ? availabilityFilter : ModelAvailabilityFilter.ALWAYS_AVAILABLE;
-        LOG.infof("Agent router initialized with registry, default=%s, aliases=%d",
-                  defaultBackendKey, this.aliases.size());
+        this(registry, defaultBackendKey, modelRegistry, aliases, availabilityFilter, null);
+    }
+
+
+    public static RoutingAgentProvider create(
+            BackendInstanceRegistry registry,
+            String configDefaultBackend,
+            ModelRegistry modelRegistry,
+            Optional<ManifestResult> manifestResult) {
+        return create(registry, configDefaultBackend, modelRegistry, manifestResult, null, null);
     }
 
     @FactoryMethod
@@ -69,26 +91,33 @@ public class RoutingAgentProvider implements AgentProvider {
             BackendInstanceRegistry registry,
             String configDefaultBackend,
             ModelRegistry modelRegistry,
-            Optional<ManifestResult> manifestResult) {
+            Optional<ManifestResult> manifestResult,
+            ModelAvailabilityFilter availabilityFilter,
+            io.casehub.platform.agent.session.SessionPoolRegistry poolRegistry) {
         if (manifestResult.isPresent()) {
             var result = manifestResult.get();
             var defaultBackend = result.defaultBackendKey() != null
                                  ? result.defaultBackendKey() : configDefaultBackend;
-            return new RoutingAgentProvider(registry, defaultBackend, modelRegistry, result.aliases());
+            return new RoutingAgentProvider(registry, defaultBackend, modelRegistry,
+                                            result.aliases(), availabilityFilter, poolRegistry);
         }
-        return new RoutingAgentProvider(registry, configDefaultBackend, modelRegistry);
+        return new RoutingAgentProvider(registry, configDefaultBackend, modelRegistry,
+                                        Map.of(), availabilityFilter, poolRegistry);
     }
 
 
     @Override
     public Multi<AgentEvent> invoke(AgentSessionConfig config) {
-        if (config.modelChain() != null && !config.modelChain().isEmpty()) {
-            return resolveAndInvokeWithRetry(config);
-        }
-        var route = resolveFromConfig(config);
+        var route = config.modelQuery() != null ? resolveQuery(config.modelQuery()) : resolve(config.model());
         var rewritten = new AgentSessionConfig(
                 config.systemPrompt(), config.userPrompt(), config.mcpServers(),
                 config.timeout(), config.correlationId(), route.apiModelId());
+        if (poolRegistry != null) {
+            var pool = poolRegistry.findPool(route.backend().key(), rewritten.model());
+            if (pool.isPresent()) {
+                return pool.get().invokeViaSession(rewritten);
+            }
+        }
         return route.backend().invoke(rewritten);
     }
 
@@ -135,10 +164,16 @@ public class RoutingAgentProvider implements AgentProvider {
 
     @Override
     public AgentSession openSession(AgentSessionInit init) {
-        var route = resolveFromInit(init);
+        var route = init.modelQuery() != null ? resolveQuery(init.modelQuery()) : resolve(init.model());
         var rewritten = new AgentSessionInit(
                 init.systemPrompt(), init.mcpServers(),
                 init.timeout(), init.correlationId(), route.apiModelId());
+        if (poolRegistry != null) {
+            var pool = poolRegistry.findPool(route.backend().key(), rewritten.model());
+            if (pool.isPresent()) {
+                return pool.get().checkout(rewritten);
+            }
+        }
         return route.backend().openSession(rewritten);
     }
 

@@ -10,10 +10,10 @@
         <version>0.2-SNAPSHOT</version>
     </parent>
 
-    <artifactId>casehub-platform-agent-router-core</artifactId>
+    <artifactId>casehub-platform-agent-session-core</artifactId>
     <packaging>jar</packaging>
-    <name>CaseHub Platform :: Agent Router Core</name>
-    <description>Framework-neutral agent routing — dispatches to AgentBackend by key.
+    <name>CaseHub Platform :: Agent Session Core</name>
+    <description>Framework-neutral session pool and lifecycle management.
         Pure Java POJO — no CDI, no Spring.</description>
 
     <dependencies>
@@ -24,19 +24,8 @@
         </dependency>
         <dependency>
             <groupId>io.casehub</groupId>
-            <artifactId>casehub-platform-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.casehub</groupId>
             <artifactId>casehub-platform-agent-config-core</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.casehub</groupId>
-            <artifactId>casehub-platform-agent-session-core</artifactId>
-            <version>${project.version}</version>
-            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.jboss.logging</groupId>

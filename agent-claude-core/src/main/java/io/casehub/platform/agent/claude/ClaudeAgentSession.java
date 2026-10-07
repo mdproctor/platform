@@ -184,6 +184,13 @@ class ClaudeAgentSession implements AgentSession {
         semaphore.release();
     }
 
+
+    @Override
+    public void clear() {
+        // Claude CLI SDK 1.0.0 has no clear() — subprocess restart is the only reset path.
+        // The pool handles this by closing the session and pre-warming a replacement.
+    }
+
     private Multi<AgentEvent> buildTurnStream(final String prompt) {
         if (turnFactory != null) {
             return turnFactory.apply(prompt);

@@ -155,6 +155,8 @@
         <module>agent-router</module>
         <module>agent-gate-core</module>
         <module>agent-gate</module>
+        <module>agent-session-core</module>
+        <module>agent-session</module>
         <module>graphql</module>
         <module>graphql-client</module>
         <module>mcp-core</module>

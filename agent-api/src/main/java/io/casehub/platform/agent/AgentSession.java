@@ -76,4 +76,14 @@ public interface AgentSession extends AutoCloseable {
     default void close() {
         close(Duration.ofSeconds(30));
     }
+
+    /**
+     * Reset conversation context without closing the session.
+     *
+     * <p>Default no-op. Backends that support in-place context reset (e.g. clearing
+     * {@code ChatMemory}) override this. For subprocess-based backends where clearing
+     * requires a process restart, the session pool handles recycling externally.
+     */
+    default void clear() {}
+
 }
