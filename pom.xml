@@ -59,6 +59,8 @@
         <module>persistence-spring-mongodb</module>
         <module>endpoints-memory-core</module>
         <module>endpoints-memory</module>
+        <module>registry-inmem-core</module>
+        <module>registry-inmem</module>
         <module>endpoints-config-core</module>
         <module>endpoints-config</module>
         <module>datasource-alpha</module>

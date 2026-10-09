@@ -49,4 +49,8 @@ public interface RegistryService {
     List<Relationship> relationships(String id);
 
     void watch(RegistryQuery query, Consumer<RegistryEvent> listener);
+
+    default void registerCascadeRule(CascadeRule rule) {}
+
+    default List<CascadeRule> cascadeRules()           {return List.of();}
 }

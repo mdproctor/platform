@@ -125,4 +125,24 @@ class RegistryEntryTest {
         assertThat(HealthStatus.values()).containsExactly(
                 HealthStatus.HEALTHY, HealthStatus.DEGRADED, HealthStatus.DOWN);
     }
+
+    @Test
+    void cascadeRuleRecord() {
+        var rule = new CascadeRule("owns", CascadeAction.DEREGISTER);
+        assertThat(rule.relationshipType()).isEqualTo("owns");
+        assertThat(rule.onSourceDeregister()).isEqualTo(CascadeAction.DEREGISTER);
+    }
+
+    @Test
+    void cascadeRuleNullTypeThrows() {
+        assertThatThrownBy(() -> new CascadeRule(null, CascadeAction.NONE))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void cascadeActionValues() {
+        assertThat(CascadeAction.values()).containsExactly(
+                CascadeAction.DEREGISTER, CascadeAction.MARK_ORPHANED,
+                CascadeAction.NOTIFY, CascadeAction.NONE);
+    }
 }

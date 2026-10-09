@@ -16,6 +16,8 @@ digest-inmem
 # In-memory dev/test — Spring uses JPA counterparts (*-spring-jpa)
 endpoints-memory
 # In-memory dev/test — Spring uses JPA counterparts (*-spring-jpa)
+registry-inmem
+# In-memory dev/test — Spring uses JPA counterparts (*-spring-jpa)
 notification-settings-inmem
 # In-memory dev/test — Spring uses JPA counterparts (*-spring-jpa)
 notifications-inmem
