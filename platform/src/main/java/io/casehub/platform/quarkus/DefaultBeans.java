@@ -24,6 +24,7 @@ import io.casehub.platform.notification.NoOpNotificationStore;
 import io.casehub.platform.notification.settings.NoOpNotificationPreferenceStore;
 import io.casehub.platform.notification.settings.NoOpSuppressionStore;
 import io.casehub.platform.pdf.NoOpPdfGenerator;
+import io.casehub.platform.registry.NoOpRegistryService;
 import io.casehub.platform.signing.NoOpSigningProvider;
 import io.casehub.platform.signing.document.NoOpDocumentSigningService;
 import io.casehub.platform.signing.document.NoOpDocumentVerificationService;
@@ -134,6 +135,13 @@ public class DefaultBeans {
 
     @Produces @DefaultBean @ApplicationScoped
     public NoOpEndpointRegistry noOpEndpointRegistry() { return new NoOpEndpointRegistry(); }
+// --- Registry ---
+
+    @Produces
+    @DefaultBean
+    @ApplicationScoped
+    public NoOpRegistryService noOpRegistryService() {return new NoOpRegistryService();}
+
 
     // --- Delivery ---
 
