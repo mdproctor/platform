@@ -135,13 +135,11 @@ public class DefaultBeans {
 
     @Produces @DefaultBean @ApplicationScoped
     public NoOpEndpointRegistry noOpEndpointRegistry() { return new NoOpEndpointRegistry(); }
-// --- Registry ---
 
-    @Produces
-    @DefaultBean
-    @ApplicationScoped
-    public NoOpRegistryService noOpRegistryService() {return new NoOpRegistryService();}
+    // --- Registry ---
 
+    @Produces @DefaultBean @ApplicationScoped
+    public NoOpRegistryService noOpRegistryService() { return new NoOpRegistryService(); }
 
     // --- Delivery ---
 

@@ -52,5 +52,5 @@ public interface RegistryService {
 
     default void registerCascadeRule(CascadeRule rule) {}
 
-    default List<CascadeRule> cascadeRules()           {return List.of();}
+    default List<CascadeRule> cascadeRules() { return List.of(); }
 }
