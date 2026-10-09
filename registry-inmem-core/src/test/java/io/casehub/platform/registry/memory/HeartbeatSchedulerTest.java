@@ -112,4 +112,15 @@ class HeartbeatSchedulerTest {
         assertThat(registry.resolve("svc-t1").get().health()).isEqualTo(HealthStatus.DOWN);
         assertThat(registry.resolve("svc-t2").get().health()).isEqualTo(HealthStatus.DOWN);
     }
+
+    @Test
+    void degradedEntryMarkedDownWhenExpired() {
+        var entry = new RegistryEntry("svc-1", "service", "default", "tenant-1",
+                                      Map.of(), Instant.now(), Instant.now().minus(Duration.ofSeconds(10)),
+                                      Duration.ofSeconds(5), HealthStatus.DEGRADED);
+        registry.register(entry);
+        events.clear();
+        scheduler.checkHeartbeats();
+        assertThat(registry.resolve("svc-1").get().health()).isEqualTo(HealthStatus.DOWN);
+    }
 }

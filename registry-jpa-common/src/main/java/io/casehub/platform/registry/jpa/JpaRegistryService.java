@@ -62,8 +62,7 @@ public class JpaRegistryService implements RegistryService {
         var entity = em.find(RegistryEntryEntity.class, id);
         if (entity != null) {
             entity.lastHeartbeat = Instant.now();
-            entity.health = HealthStatus.HEALTHY.name();
-            em.merge(entity);
+            entity.health        = HealthStatus.HEALTHY.name();
         }
     }
 
@@ -114,10 +113,16 @@ public class JpaRegistryService implements RegistryService {
 
     @Override
     public void unlink(String sourceId, String targetId) {
-        em.createQuery("DELETE FROM RelationshipEntity r WHERE r.sourceId = :src AND r.targetId = :tgt")
-                .setParameter("src", sourceId)
-                .setParameter("tgt", targetId)
-                .executeUpdate();
+        var matches = em.createQuery(
+                                "SELECT r FROM RelationshipEntity r WHERE r.sourceId = :src AND r.targetId = :tgt",
+                                RelationshipEntity.class)
+                        .setParameter("src", sourceId)
+                        .setParameter("tgt", targetId)
+                        .getResultList();
+        for (var entity : matches) {
+            em.remove(entity);
+            eventSink.accept(RegistryEvent.unlinked(new Relationship(entity.sourceId, entity.targetId, entity.type)));
+        }
     }
 
     @Override

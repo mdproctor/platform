@@ -41,6 +41,106 @@ class RegistryEntryTest {
     }
 
     @Test
+    void nullNamespaceThrows() {
+        assertThatThrownBy(() -> new RegistryEntry(
+                "e1", "service", null, "t", Map.of(),
+                Instant.now(), null, Duration.ofSeconds(30), HealthStatus.HEALTHY
+        )).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void nullTenancyIdThrows() {
+        assertThatThrownBy(() -> new RegistryEntry(
+                "e1", "service", "default", null, Map.of(),
+                Instant.now(), null, Duration.ofSeconds(30), HealthStatus.HEALTHY
+        )).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void nullMetadataThrows() {
+        assertThatThrownBy(() -> new RegistryEntry(
+                "e1", "service", "default", "t", null,
+                Instant.now(), null, Duration.ofSeconds(30), HealthStatus.HEALTHY
+        )).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void nullRegisteredAtThrows() {
+        assertThatThrownBy(() -> new RegistryEntry(
+                "e1", "service", "default", "t", Map.of(),
+                null, null, Duration.ofSeconds(30), HealthStatus.HEALTHY
+        )).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void nullTtlThrows() {
+        assertThatThrownBy(() -> new RegistryEntry(
+                "e1", "service", "default", "t", Map.of(),
+                Instant.now(), null, null, HealthStatus.HEALTHY
+        )).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void nullHealthThrows() {
+        assertThatThrownBy(() -> new RegistryEntry(
+                "e1", "service", "default", "t", Map.of(),
+                Instant.now(), null, Duration.ofSeconds(30), null
+        )).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void relationshipNullTargetThrows() {
+        assertThatThrownBy(() -> new Relationship("app-1", null, "owns"))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void relationshipNullTypeThrows() {
+        assertThatThrownBy(() -> new Relationship("app-1", "pool-1", null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void cascadeRuleNullActionThrows() {
+        assertThatThrownBy(() -> new CascadeRule("owns", null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void registryEventDeregisteredFactory() {
+        var entry = new RegistryEntry("e1", "service", "default", "t", Map.of(),
+                                      Instant.now(), null, Duration.ofSeconds(30), HealthStatus.HEALTHY);
+        var event = RegistryEvent.deregistered(entry);
+        assertThat(event.kind()).isEqualTo(RegistryEvent.EventKind.DEREGISTERED);
+        assertThat(event.entry()).isSameAs(entry);
+    }
+
+    @Test
+    void registryEventHealthChangedFactory() {
+        var entry = new RegistryEntry("e1", "service", "default", "t", Map.of(),
+                                      Instant.now(), null, Duration.ofSeconds(30), HealthStatus.DOWN);
+        var event = RegistryEvent.healthChanged(entry);
+        assertThat(event.kind()).isEqualTo(RegistryEvent.EventKind.HEALTH_CHANGED);
+    }
+
+    @Test
+    void registryEventHeartbeatExpiredFactory() {
+        var entry = new RegistryEntry("e1", "service", "default", "t", Map.of(),
+                                      Instant.now(), null, Duration.ofSeconds(30), HealthStatus.DOWN);
+        var event = RegistryEvent.heartbeatExpired(entry);
+        assertThat(event.kind()).isEqualTo(RegistryEvent.EventKind.HEARTBEAT_EXPIRED);
+    }
+
+    @Test
+    void registryEventUnlinkedFactory() {
+        var rel   = new Relationship("a", "b", "owns");
+        var event = RegistryEvent.unlinked(rel);
+        assertThat(event.kind()).isEqualTo(RegistryEvent.EventKind.UNLINKED);
+        assertThat(event.relationship()).isSameAs(rel);
+    }
+
+
+    @Test
     void metadataIsImmutableCopy() {
         var props = new java.util.HashMap<String, String>();
         props.put("key", "value");

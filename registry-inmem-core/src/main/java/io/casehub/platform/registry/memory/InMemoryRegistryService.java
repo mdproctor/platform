@@ -1,7 +1,6 @@
 package io.casehub.platform.registry.memory;
 
 import io.casehub.platform.api.registry.CascadeRule;
-import io.casehub.platform.api.registry.HealthStatus;
 import io.casehub.platform.api.registry.RegistryEntry;
 import io.casehub.platform.api.registry.RegistryEvent;
 import io.casehub.platform.api.registry.RegistryQuery;
@@ -76,8 +75,13 @@ public class InMemoryRegistryService implements RegistryService {
 
     @Override
     public void unlink(String sourceId, String targetId) {
-        relationships.removeIf(r ->
-                r.sourceId().equals(sourceId) && r.targetId().equals(targetId));
+        var removed = relationships.stream()
+                                   .filter(r -> r.sourceId().equals(sourceId) && r.targetId().equals(targetId))
+                                   .findFirst();
+        if (removed.isPresent()) {
+            relationships.remove(removed.get());
+            cdiEventSink.accept(RegistryEvent.unlinked(removed.get()));
+        }
     }
 
     @Override

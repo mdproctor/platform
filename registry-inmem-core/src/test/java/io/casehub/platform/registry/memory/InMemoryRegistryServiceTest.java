@@ -251,6 +251,51 @@ class InMemoryRegistryServiceTest {
         registry.deregister("nope");
         assertThat(cdiEvents).isEmpty();
     }
+// --- unlink events ---
+
+    @Test
+    void unlinkFiresCdiEvent() {
+        registry.register(entry("app-1", "app", "ns"));
+        registry.register(entry("pool-1", "pool", "ns"));
+        registry.link(new Relationship("app-1", "pool-1", "owns"));
+        cdiEvents.clear();
+        registry.unlink("app-1", "pool-1");
+        assertThat(cdiEvents).hasSize(1);
+        assertThat(cdiEvents.get(0).kind()).isEqualTo(RegistryEvent.EventKind.UNLINKED);
+        assertThat(cdiEvents.get(0).relationship().sourceId()).isEqualTo("app-1");
+    }
+
+    @Test
+    void unlinkUnknownPairNoEvent() {
+        cdiEvents.clear();
+        registry.unlink("x", "y");
+        assertThat(cdiEvents).isEmpty();
+    }
+
+// --- watch edge cases ---
+
+    @Test
+    void watchReceivesHealthChangedEvents() {
+        var entry = new RegistryEntry("svc-1", "service", "default", "tenant-1",
+                                      Map.of(), Instant.now().minus(Duration.ofSeconds(60)), null,
+                                      Duration.ofSeconds(5), HealthStatus.HEALTHY);
+        registry.register(entry);
+        registry.watch(new RegistryQuery("tenant-1", null, null), watchEvents::add);
+        var scheduler = new HeartbeatScheduler(registry);
+        scheduler.checkHeartbeats();
+        assertThat(watchEvents).anyMatch(e ->
+                                                 e.kind() == RegistryEvent.EventKind.HEALTH_CHANGED);
+    }
+
+    @Test
+    void watchFiltersByNamespace() {
+        registry.watch(new RegistryQuery("tenant-1", null, "app-a"), watchEvents::add);
+        registry.register(entry("svc-1", "service", "app-a"));
+        registry.register(entry("svc-2", "service", "app-b"));
+        assertThat(watchEvents).hasSize(1);
+        assertThat(watchEvents.get(0).entry().id()).isEqualTo("svc-1");
+    }
+
 
 // --- cascade rules ---
 

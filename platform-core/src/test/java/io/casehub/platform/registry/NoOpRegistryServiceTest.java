@@ -1,5 +1,7 @@
 package io.casehub.platform.registry;
 
+import io.casehub.platform.api.registry.CascadeAction;
+import io.casehub.platform.api.registry.CascadeRule;
 import io.casehub.platform.api.registry.HealthStatus;
 import io.casehub.platform.api.registry.RegistryEntry;
 import io.casehub.platform.api.registry.RegistryEvent;
@@ -60,5 +62,11 @@ class NoOpRegistryServiceTest {
         registry.watch(new RegistryQuery("t", null, null), events::add);
         registry.register(entry("e1", "service"));
         assertThat(events).isEmpty();
+    }
+
+    @Test
+    void cascadeRulesDefaultEmpty() {
+        registry.registerCascadeRule(new CascadeRule("owns", CascadeAction.DEREGISTER));
+        assertThat(registry.cascadeRules()).isEmpty();
     }
 }
