@@ -55,6 +55,8 @@ testing/                    <- companion: @Alternative @Priority(200) test fixtu
 | `agent-router/` | `casehub-platform-agent-router` | `@ApplicationScoped` | `RoutingAgentProvider` -- four-step model resolution (alias → tier → registry → key → fail-fast) with preferVendor tiebreaking; consumes `ManifestResult`; `NoOpModelRegistry @DefaultBean` fallback |
 | `agent-gate/` | `casehub-platform-agent-gate` | `@Decorator @Priority(APPLICATION)` | Token bucket + concurrency gate rate limiter -- wraps RoutingAgentProvider |
 | `endpoints-memory/` | `casehub-platform-endpoints-memory` | `@Alternative @Priority(100)` | In-memory `EndpointRegistry` -- volatile, Tier 4 CDI |
+| `registry-inmem/` | `casehub-platform-registry-inmem` | `@Alternative @Priority(50)` | In-memory `RegistryService` -- volatile, heartbeat/TTL, relationships, watch |
+| `registry-jpa/` | `casehub-platform-registry-jpa` | `@Alternative @Priority(100)` | JPA `RegistryService` -- dual-core POJO, Flyway, heartbeat scheduler |
 | `endpoints-config/` | `casehub-platform-endpoints-config` | `@Startup @ApplicationScoped` | YAML endpoint populator -- `${VAR}` interpolation, multi-file |
 | `notifications/` | `casehub-platform-notifications` | `@ApplicationScoped` | REST + SSE -- list, mark-read, dismiss, unread-count, preferences, suppression |
 | `notifications-inmem/` | `casehub-platform-notifications-inmem` | `@Alternative @Priority(100)` | In-memory `NotificationStore` -- bounded eviction, cursor pagination |
@@ -135,6 +137,8 @@ testing/                    <- companion: @Alternative @Priority(200) test fixtu
 | `delivery-channel-inmem-core/` | `casehub-platform-delivery-channel-inmem-core` | (none) | Framework-neutral delivery channel POJOs |
 | `datasource-inmem-core/` | `casehub-platform-datasource-inmem-core` | (none) | Framework-neutral datasource registry POJOs |
 | `endpoints-memory-core/` | `casehub-platform-endpoints-memory-core` | (none) | Framework-neutral endpoint registry POJOs |
+| `registry-inmem-core/` | `casehub-platform-registry-inmem-core` | (none) | Framework-neutral InMemoryRegistryService + HeartbeatScheduler POJOs |
+| `registry-jpa-common/` | `casehub-platform-registry-jpa-common` | (none) | JPA entities, Flyway migrations, framework-neutral JpaRegistryService POJO |
 | `endpoints-config-core/` | `casehub-platform-endpoints-config-core` | (none) | Framework-neutral endpoint config POJOs |
 | `acl-inmem-core/` | `casehub-platform-acl-inmem-core` | (none) | Framework-neutral in-memory ACL POJOs |
 | `callback-inmem-core/` | `casehub-platform-callback-inmem-core` | (none) | Framework-neutral callback in-memory POJOs |
@@ -159,7 +163,7 @@ Two patterns exist:
 | Pattern | Used by | Behaviour |
 |---------|---------|-----------|
 | **Configurable mock** | `PreferenceProvider`, `CurrentPrincipal`, `GroupMembershipProvider` | Returns `@ConfigProperty` values -- tests set specific returns |
-| **Silent no-op** | `CaseMemoryStore`, `AgentProvider`, `AccessControlProvider`, `ExpressionEngineRegistry`, `PreferenceStore`, `PreferenceSchemaRegistry`, `CredentialResolver`, `DataSourceRegistry`, `EndpointRegistry`, `MarshallerRegistry`, `NotificationStore`, `SubscriptionStore`, `SuppressionStore`, `NotificationPreferenceStore`, `DeliveryAttemptStore`, `DigestBuffer`, `DeliveryChannelRegistry`, `SubjectViewStore`, `ViewMembershipTracker`, `CrossTenantSubjectViewStore`, `DIDResolver`, `ActorDIDProvider`, `EventTypeRegistry`, `EntityWatcherProvider`, `StrategyResolver`, `DisplayTermResolver`, `PdfGenerator`, `DocumentSigningService`, `DocumentVerificationService`, `McpResourceRegistry`, `ModelRegistry` (`NoOpModelRegistry`), `CallbackRegistry`, `LlmCredentialStore`, `SessionIsolator`, `WorkerCredentialStore`, `AgentCredentialValidator`, `WorkerAuthorizationPolicy` (`AutoApproveWorkerAuthorizationPolicy`) | Returns empty/void -- system works without the capability |
+| **Silent no-op** | `CaseMemoryStore`, `AgentProvider`, `AccessControlProvider`, `ExpressionEngineRegistry`, `PreferenceStore`, `PreferenceSchemaRegistry`, `CredentialResolver`, `DataSourceRegistry`, `EndpointRegistry`, `RegistryService`, `MarshallerRegistry`, `NotificationStore`, `SubscriptionStore`, `SuppressionStore`, `NotificationPreferenceStore`, `DeliveryAttemptStore`, `DigestBuffer`, `DeliveryChannelRegistry`, `SubjectViewStore`, `ViewMembershipTracker`, `CrossTenantSubjectViewStore`, `DIDResolver`, `ActorDIDProvider`, `EventTypeRegistry`, `EntityWatcherProvider`, `StrategyResolver`, `DisplayTermResolver`, `PdfGenerator`, `DocumentSigningService`, `DocumentVerificationService`, `McpResourceRegistry`, `ModelRegistry` (`NoOpModelRegistry`), `CallbackRegistry`, `LlmCredentialStore`, `SessionIsolator`, `WorkerCredentialStore`, `AgentCredentialValidator`, `WorkerAuthorizationPolicy` (`AutoApproveWorkerAuthorizationPolicy`) | Returns empty/void -- system works without the capability |
 
 ### CDI Priority Ladder
 
